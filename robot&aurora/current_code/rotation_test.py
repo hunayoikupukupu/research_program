@@ -1,5 +1,5 @@
 import numpy as np
-from relative_orientation_solver import main  # main関数をimport
+import adaptive_transform  # パッケージ全体をimport
 
 # テスト用クォータニオンリスト（様々な回転パターンを網羅）
 test_quaternions = [
@@ -141,7 +141,7 @@ for i, (quat, euler) in enumerate(zip(test_quaternions, test_euler_angles)):
     print(f"処理中... {i+1}/{len(test_quaternions)}")
     
     # main関数が5つ返す: sensor_point_from_robot, sensor_euler_from_robot, sensor_quat_from_robot, arm_euler_from_robot, arm_quat_from_robot
-    sensor_point_from_robot, sensor_euler_from_robot, sensor_quat_from_robot, arm_euler_from_robot, arm_quat_from_robot = main(
+    sensor_point_from_robot, sensor_euler_from_robot, sensor_quat_from_robot, arm_euler_from_robot, arm_quat_from_robot = adaptive_transform.main(
         x_range=x_range,
         y_range=y_range,
         z_range=z_range,
