@@ -1,9 +1,11 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import pandas as pd
-import csv
+import os
+from datetime import datetime
 
 def rotation_matrix_fixed_XYZ_deg(roll_deg, pitch_deg, yaw_deg):
+    """固定軸XYZ回転でのオイラー角から回転行列を計算"""
     roll = np.deg2rad(roll_deg)
     pitch = np.deg2rad(pitch_deg)
     yaw = np.deg2rad(yaw_deg)
@@ -26,325 +28,221 @@ def rotation_matrix_fixed_XYZ_deg(roll_deg, pitch_deg, yaw_deg):
 
     return Rz @ Ry @ Rx
 
-# 入力リスト（オイラー角 [roll, pitch, yaw] in degrees）
-Sensor_from_aurora = [
-    # 基本回転（単位・180度回転）
-    [0, 0, 0],           # 回転なし
-    [180, 0, 0],         # X軸180度
-    [0, 180, 0],         # Y軸180度
-    [0, 0, 180],         # Z軸180度
+def verify_csv_transformations(csv_file_path, tolerance=0.001):
+    """
+    CSVファイルから変換結果を読み込んで検証する
     
-    # 90度回転（各軸）
-    [90, 0, 0],          # X軸90度
-    [0, 90, 0],          # Y軸90度
-    [0, 0, 90],          # Z軸90度
-    [-90, 0, 0],         # X軸-90度
-    [0, -90, 0],         # Y軸-90度
-    [0, 0, -90],         # Z軸-90度
+    Args:
+        csv_file_path (str): CSVファイルのパス
+        tolerance (float): 許容誤差（デフォルト: 0.001）
     
-    # 45度回転（各軸）
-    [45, 0, 0],          # X軸45度
-    [0, 45, 0],          # Y軸45度
-    [0, 0, 45],          # Z軸45度
-    [-45, 0, 0],         # X軸-45度
-    [0, -45, 0],         # Y軸-45度
-    [0, 0, -45],         # Z軸-45度
+    Returns:
+        tuple: (verification_results, summary_stats)
+    """
     
-    # 30度回転（各軸）
-    [30, 0, 0],          # X軸30度
-    [0, 30, 0],          # Y軸30度
-    [0, 0, 30],          # Z軸30度
+    # CSVファイルの存在確認
+    if not os.path.exists(csv_file_path):
+        raise FileNotFoundError(f"CSVファイルが見つかりません: {csv_file_path}")
     
-    # 複合回転（2軸組み合わせ）
-    [180, 180, 0],       # X180度+Y180度
-    [180, 0, 180],       # X180度+Z180度
-    [0, 180, 180],       # Y180度+Z180度
-    [90, 90, 0],         # X90度+Y90度
-    [90, 0, 90],         # X90度+Z90度
-    [0, 90, 90],         # Y90度+Z90度
+    # CSVファイルを読み込み
+    print(f"CSVファイルを読み込み中: {csv_file_path}")
+    df = pd.read_csv(csv_file_path)
     
-    # 複合回転（3軸組み合わせ）
-    [120, 120, 120],     # XYZ各120度（近似）
-    [30, 30, 30],        # XYZ各30度
-    [45, 45, 45],        # XYZ各45度
-    [45, 45, 30],        # X45度+Y45度+Z30度
-    [30, 30, 90],        # X30度+Y30度+Z90度
+    print(f"読み込みデータ数: {len(df)}行")
+    print(f"許容誤差: {tolerance}")
+    print("="*60)
     
-    # 小角度回転（高精度テスト用）
-    [10, 0, 0],          # X軸10度
-    [0, 10, 0],          # Y軸10度
-    [0, 0, 10],          # Z軸10度
-    [5, 5, 0],           # X5度+Y5度
+    # 変換用の回転行列を事前に計算
+    # Aurora→Robot変換（Z軸45度回転と仮定）
+    R_aurora_to_robot = R.from_euler('xyz', [20, -55, 167], degrees=True).as_matrix()
     
-    # 大角度回転
-    [150, 0, 0],         # X軸150度
-    [0, 150, 0],         # Y軸150度
-    [0, 0, 150],         # Z軸150度
+    # Sensor→Arm変換（Z軸45度回転と仮定）
+    R_sensor_to_arm = R.from_euler('xyz', [11, -5, -130], degrees=True).as_matrix()
     
-    # ランダム的な複合回転（近似値）
-    [60, 80, 100],       # 複雑な組み合わせ1
-    [30, 60, 90],        # 複雑な組み合わせ2
-    [60, 60, 60],        # 対称的な複合回転
-]
+    # 結果を格納するリスト
+    verification_results = []
+    
+    # 各行のデータを処理
+    for index, row in df.iterrows():
+        test_pattern = int(row['Test_Pattern'])
+        
+        # 入力データの抽出
+        aurora_euler = [
+            row['Sensor_from_Aurora_Euler_X'],
+            row['Sensor_from_Aurora_Euler_Y'],
+            row['Sensor_from_Aurora_Euler_Z']
+        ]
+        
+        robot_euler = [
+            row['Sensor_from_Robot_Euler_X'],
+            row['Sensor_from_Robot_Euler_Y'],
+            row['Sensor_from_Robot_Euler_Z']
+        ]
+        
+        arm_euler = [
+            row['Arm_from_Robot_Euler_X'],
+            row['Arm_from_Robot_Euler_Y'],
+            row['Arm_from_Robot_Euler_Z']
+        ]
+        
+        print(f"\n=== Test Pattern {test_pattern}: Aurora[{aurora_euler[0]:.1f}, {aurora_euler[1]:.1f}, {aurora_euler[2]:.1f}] ===")
+        
+        # 各座標系の回転行列を計算
+        R_aurora = R.from_euler('xyz', aurora_euler, degrees=True).as_matrix()
+        R_robot_actual = R.from_euler('xyz', robot_euler, degrees=True).as_matrix()
+        R_arm_actual = R.from_euler('xyz', arm_euler, degrees=True).as_matrix()
+        
+        # 1. Aurora→Robot変換の検証
+        R_robot_calculated = R_aurora_to_robot @ R_aurora
+        aurora_to_robot_match = np.allclose(R_robot_calculated, R_robot_actual, atol=tolerance)
+        max_error_aurora_robot = np.max(np.abs(R_robot_calculated - R_robot_actual))
+        
+        if aurora_to_robot_match:
+            print(f"Aurora→Robot変換: 一致 (最大誤差: {max_error_aurora_robot:.6f})")
+            aurora_to_robot_status = "一致"
+        else:
+            print(f"Aurora→Robot変換: 不一致 (最大誤差: {max_error_aurora_robot:.6f})")
+            aurora_to_robot_status = "不一致"
+            
+            # 詳細な差分を表示
+            print("  計算結果のオイラー角:")
+            calculated_euler = R.from_matrix(R_robot_calculated).as_euler('xyz', degrees=True)
+            print(f"    [{calculated_euler[0]:.4f}, {calculated_euler[1]:.4f}, {calculated_euler[2]:.4f}]")
+            print("  実際の結果のオイラー角:")
+            print(f"    [{robot_euler[0]:.4f}, {robot_euler[1]:.4f}, {robot_euler[2]:.4f}]")
+        
+        # 2. Sensor→Arm変換の検証
+        R_arm_calculated = R_sensor_to_arm @ R_robot_actual
+        sensor_to_arm_match = np.allclose(R_arm_calculated, R_arm_actual, atol=tolerance)
+        max_error_sensor_arm = np.max(np.abs(R_arm_calculated - R_arm_actual))
+        
+        if sensor_to_arm_match:
+            print(f"Sensor→Arm変換: 一致 (最大誤差: {max_error_sensor_arm:.6f})")
+            sensor_to_arm_status = "一致"
+        else:
+            print(f"Sensor→Arm変換: 不一致 (最大誤差: {max_error_sensor_arm:.6f})")
+            sensor_to_arm_status = "不一致"
+            
+            # 詳細な差分を表示
+            print("  計算結果のオイラー角:")
+            calculated_euler = R.from_matrix(R_arm_calculated).as_euler('xyz', degrees=True)
+            print(f"    [{calculated_euler[0]:.4f}, {calculated_euler[1]:.4f}, {calculated_euler[2]:.4f}]")
+            print("  実際の結果のオイラー角:")
+            print(f"    [{arm_euler[0]:.4f}, {arm_euler[1]:.4f}, {arm_euler[2]:.4f}]")
+        
+        # 結果を記録
+        verification_results.append({
+            'Test_Pattern': test_pattern,
+            'Sensor_from_Aurora_Roll': aurora_euler[0],
+            'Sensor_from_Aurora_Pitch': aurora_euler[1],
+            'Sensor_from_Aurora_Yaw': aurora_euler[2],
+            'Sensor_from_Robot_Roll': robot_euler[0],
+            'Sensor_from_Robot_Pitch': robot_euler[1],
+            'Sensor_from_Robot_Yaw': robot_euler[2],
+            'Arm_from_Robot_Roll': arm_euler[0],
+            'Arm_from_Robot_Pitch': arm_euler[1],
+            'Arm_from_Robot_Yaw': arm_euler[2],
+            'Aurora_to_Robot_Status': aurora_to_robot_status,
+            'Sensor_to_Arm_Status': sensor_to_arm_status,
+            'Aurora_to_Robot_Max_Error': max_error_aurora_robot,
+            'Sensor_to_Arm_Max_Error': max_error_sensor_arm
+        })
+    
+    return verification_results
 
-# センサー出力リスト（オイラー角 [roll, pitch, yaw] in degrees）
-Sensor_from_robot = [
-    # 基本回転（単位・180度回転）
-    [0, 0, 45],          # 回転なし
-    [180, 0, 45],        # X軸180度
-    [180, 0, -135],      # Y軸180度
-    [0, 0, -135],        # Z軸180度
+def save_verification_results(verification_results, tolerance):
+    """検証結果をCSVファイルに保存"""
     
-    # 90度回転（各軸）
-    [90, 0, 45],         # X軸90度
-    [-45, 90, 0],        # Y軸90度
-    [135, 0, 0],         # Z軸90度
-    [-90, 0, 45],        # X軸-90度
-    [45, -90, 0],        # Y軸-90度
-    [0, -90, 0],         # Z軸-90度
+    # DataFrameに変換
+    df_results = pd.DataFrame(verification_results)
     
-    # 45度回転（各軸）
-    [45.0009, 0, 45],    # X軸45度
-    [0, 45.0009, 45],    # Y軸45度
-    [0, 0, 90.0009],     # Z軸45度
-    [-45.0009, 0, 45],   # X軸-45度
-    [0, -45.0009, 45],   # Y軸-45度
-    [0, 0, -0.0009],     # Z軸-45度
+    # CSVファイル名を生成（タイムスタンプ付き）
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    csv_filename = f"transform_verification_results_{timestamp}.csv"
     
-    # 30度回転（各軸）
-    [29.9987, 0, 45],    # X軸30度
-    [0, 29.9987, 45],    # Y軸30度
-    [0, 0, 74.9987],     # Z軸30度
+    # CSVファイルに保存
+    df_results.to_csv(csv_filename, index=False, float_format='%.6f')
     
-    # 複合回転（2軸組み合わせ）
-    [-180, 0, -45],      # X180度+Y180度
-    [-135, -90, 0],      # X180度+Z180度
-    [90, 0, -135],       # Y180度+Z180度
-    [90.0008, 45, 90.0005],  # X90度+Y90度
-    [54.7359, -30.0003, 99.7359],  # X90度+Z90度
-    [45.0005, 45, 135.0008],  # Y90度+Z90度
+    print(f"\n=== 検証結果を保存しました ===")
+    print(f"ファイル名: {csv_filename}")
+    print(f"保存場所: {os.path.abspath(csv_filename)}")
     
-    # 複合回転（3軸組み合わせ）
-    [90, 0, 135],        # XYZ各120度（近似）
-    [59.1227, 8.4893, 75.0846],  # XYZ各30度
-    [90, 0, 74.9985],    # XYZ各45度
-    [61.0129, 17.3199, 106.0129],  # X45度+Y45度+Z30度
-    [44.9991, 0, 135],   # X30度+Y30度+Z90度
+    return csv_filename, df_results
+
+def print_summary_statistics(verification_results, tolerance):
+    """サマリー統計を表示"""
     
-    # 小角度回転（高精度テスト用）
-    [10.005, 0, 45],     # X軸10度
-    [0, 10.005, 45],     # Y軸10度
-    [0, 0, 55.005],      # Z軸10度
-    [5.0121, 4.993, 45.2187],  # X5度+Y5度
+    total_cases = len(verification_results)
+    aurora_robot_matches = sum(1 for r in verification_results if r['Aurora_to_Robot_Status'] == '一致')
+    sensor_arm_matches = sum(1 for r in verification_results if r['Sensor_to_Arm_Status'] == '一致')
     
-    # 大角度回転
-    [150.0013, 0, 45],   # X軸150度
-    [-180, 29.9987, -135],  # Y軸150度
-    [0, 0, -164.9987],   # Z軸150度
+    aurora_robot_errors = [r['Aurora_to_Robot_Max_Error'] for r in verification_results]
+    sensor_arm_errors = [r['Sensor_to_Arm_Max_Error'] for r in verification_results]
     
-    # ランダム的な複合回転（近似値）
-    [64.5733, 10.2255, 141.4713],  # 複雑な組み合わせ1
-    [44.9984, 19.4668, 126.8652],  # 複雑な組み合わせ2
-    [69.8913, 14.1259, 114.8913],  # 対称的な複合回転
-]
-
-# アーム出力リスト（オイラー角 [roll, pitch, yaw] in degrees）
-Arm_from_robot = [
-    # 基本回転（単位・180度回転）
-    [0, 0, 90],          # 回転なし
-    [180, 0, 90],        # X軸180度
-    [-180, 0, -90],      # Y軸180度
-    [0, 0, -90],         # Z軸180度
+    print(f"\n=== サマリー統計（許容誤差: {tolerance}） ===")
+    print(f"総ケース数: {total_cases}")
+    print(f"Aurora→Robot変換 一致: {aurora_robot_matches}件 ({aurora_robot_matches/total_cases*100:.1f}%)")
+    print(f"Aurora→Robot変換 不一致: {total_cases-aurora_robot_matches}件 ({(total_cases-aurora_robot_matches)/total_cases*100:.1f}%)")
+    print(f"Sensor→Arm変換 一致: {sensor_arm_matches}件 ({sensor_arm_matches/total_cases*100:.1f}%)")
+    print(f"Sensor→Arm変換 不一致: {total_cases-sensor_arm_matches}件 ({(total_cases-sensor_arm_matches)/total_cases*100:.1f}%)")
     
-    # 90度回転（各軸）
-    [90, 0, 90],         # X軸90度
-    [-90, 90, 0],        # Y軸90度
-    [180, -90, 0],       # Z軸90度
-    [-90, 0, 90],        # X軸-90度
-    [90, -90, 0],        # Y軸-90度
-    [0, -90, 0],         # Z軸-90度
+    print(f"\n=== エラー統計 ===")
+    print(f"Aurora→Robot変換:")
+    print(f"  最大エラー: {max(aurora_robot_errors):.6f}")
+    print(f"  平均エラー: {np.mean(aurora_robot_errors):.6f}")
+    print(f"  最小エラー: {min(aurora_robot_errors):.6f}")
     
-    # 45度回転（各軸）
-    [45.0009, 0, 90],    # X軸45度
-    [0, 45.0009, 90],    # Y軸45度
-    [0, 0, 135.0009],    # Z軸45度
-    [-45.0009, 0, 90],   # X軸-45度
-    [0, -45.0009, 90],   # Y軸-45度
-    [0, 0, 44.9991],     # Z軸-45度
+    print(f"Sensor→Arm変換:")
+    print(f"  最大エラー: {max(sensor_arm_errors):.6f}")
+    print(f"  平均エラー: {np.mean(sensor_arm_errors):.6f}")
+    print(f"  最小エラー: {min(sensor_arm_errors):.6f}")
+
+def main():
+    """メイン関数"""
     
-    # 30度回転（各軸）
-    [29.9987, 0, 90],    # X軸30度
-    [0, 29.9987, 90],    # Y軸30度
-    [0, 0, 119.9987],    # Z軸30度
+    # 設定
+    tolerance = 0.001  # 許容誤差
     
-    # 複合回転（2軸組み合わせ）
-    [-180, 0, 0],        # X180度+Y180度
-    [-90, -90, 0],       # X180度+Z180度
-    [90, 0, -90],        # Y180度+Z180度
-    [90.0008, 45, 135.0005],  # X90度+Y90度
-    [54.7359, -30.0003, 144.7359],  # X90度+Z90度
-    [45.0005, 45, -179.9992],  # Y90度+Z90度
+    # CSVファイルのパスを指定（ユーザー入力または直接指定）
+    print("=== CSV変換結果検証プログラム ===")
     
-    # 複合回転（3軸組み合わせ）
-    [90, 0, 180],        # XYZ各120度（近似）
-    [59.1227, 8.4893, 120.0846],  # XYZ各30度
-    [90, 0, 119.9985],   # XYZ各45度
-    [61.0129, 17.3199, 151.0129],  # X45度+Y45度+Z30度
-    [44.9991, 0, 180],   # X30度+Y30度+Z90度
+    # CSVファイルの選択
+    csv_file_path = input("検証するCSVファイルのパスを入力してください: ").strip()
     
-    # 小角度回転（高精度テスト用）
-    [10.005, 0, 90],     # X軸10度
-    [0, 10.005, 90],     # Y軸10度
-    [0, 0, 100.005],     # Z軸10度
-    [5.0121, 4.993, 90.2187],  # X5度+Y5度
+    # ファイルが存在しない場合は、カレントディレクトリの最新ファイルを検索
+    if not csv_file_path or not os.path.exists(csv_file_path):
+        print("ファイルが指定されていないか、存在しません。")
+        print("カレントディレクトリから最新のtransform_test_results_*.csvファイルを検索します...")
+        
+        # カレントディレクトリのCSVファイルを検索
+        csv_files = [f for f in os.listdir('.') if f.startswith('transform_test_results_') and f.endswith('.csv')]
+        
+        if csv_files:
+            # 最新のファイルを選択
+            csv_files.sort(reverse=True)  # 日付順でソート
+            csv_file_path = csv_files[0]
+            print(f"最新ファイルを使用: {csv_file_path}")
+        else:
+            print("適切なCSVファイルが見つかりません。")
+            return
     
-    # 大角度回転
-    [150.0013, 0, 90],   # X軸150度
-    [-180, 29.9987, -90],  # Y軸150度
-    [0, 0, -119.9987],   # Z軸150度
-    
-    # ランダム的な複合回転（近似値）
-    [64.5733, 10.2255, -173.5287],  # 複雑な組み合わせ1
-    [44.9984, 19.4668, 171.8652],   # 複雑な組み合わせ2
-    [69.8913, 14.1259, 159.8913],   # 対称的な複合回転
-]
+    try:
+        # 検証実行
+        verification_results = verify_csv_transformations(csv_file_path, tolerance)
+        
+        # 結果を保存
+        output_filename, df_results = save_verification_results(verification_results, tolerance)
+        
+        # サマリー統計を表示
+        print_summary_statistics(verification_results, tolerance)
+        
+        print(f"\n=== 検証完了 ===")
+        print(f"詳細結果は {output_filename} をご確認ください。")
+        
+    except Exception as e:
+        print(f"エラーが発生しました: {e}")
+        import traceback
+        traceback.print_exc()
 
-# 結果を格納するリスト
-results = []
-
-R_manual_sfa = []
-R_scipy_sfa = []
-R_manual_sfr = []
-R_scipy_sfr = []
-R_manual_afr = []
-R_scipy_afr = []
-
-# 入力値を配列に格納
-for i, angles in enumerate(Sensor_from_aurora):
-    roll_deg, pitch_deg, yaw_deg = angles
-
-    R_manual = rotation_matrix_fixed_XYZ_deg(roll_deg, pitch_deg, yaw_deg)
-    R_scipy = R.from_euler('xyz', angles, degrees=True).as_matrix()
-    R_manual_sfa.append(R_manual)
-    R_scipy_sfa.append(R_scipy)
-
-for i, angles in enumerate(Sensor_from_robot):
-    roll_deg, pitch_deg, yaw_deg = angles
-    R_manual = rotation_matrix_fixed_XYZ_deg(roll_deg, pitch_deg, yaw_deg)
-    R_scipy = R.from_euler('xyz', angles, degrees=True).as_matrix()
-    R_manual_sfr.append(R_manual)
-    R_scipy_sfr.append(R_scipy)
-
-for i, angles in enumerate(Arm_from_robot):
-    roll_deg, pitch_deg, yaw_deg = angles
-    R_manual = rotation_matrix_fixed_XYZ_deg(roll_deg, pitch_deg, yaw_deg)
-    R_scipy = R.from_euler('xyz', angles, degrees=True).as_matrix()
-    R_manual_afr.append(R_manual)
-    R_scipy_afr.append(R_scipy)
-
-# 適用する回転行列をオイラー角から生成
-R_scipy_aur2rob = R.from_euler('xyz', [0, 0, 45], degrees=True).as_matrix()
-R_manual_aur2rob = rotation_matrix_fixed_XYZ_deg(0, 0, 45)
-R_scipy_sen2arm = R.from_euler('xyz', [0, 0, 45], degrees=True).as_matrix()
-R_manual_sen2arm = rotation_matrix_fixed_XYZ_deg(0, 0, 45)
-
-# 配列の長さを記録
-length = len(Sensor_from_aurora)
-
-# 初期値を設定
-# 許容誤差: 0.001（1mm単位での一致判定）
-tolerance = 0.001
-all_cases = True
-
-print(f"\n許容誤差: {tolerance} で一致判定を実行します")
-print("="*50)
-
-for i in range(length):
-    print(f"\n=== ケース{i+1}: [roll={Sensor_from_aurora[i][0]}, pitch={Sensor_from_aurora[i][1]}, yaw={Sensor_from_aurora[i][2]}] ===")
-
-    # auroraからrobotへの変換を適用
-    R_sfr_calculated = R_scipy_aur2rob @ R_scipy_sfa[i]
-    R_sfr_scipy = R_scipy_sfr[i]
-
-    # R_sfrが一致しているか確認（設定した許容誤差で判定）
-    aurora_to_robot_match = np.allclose(R_sfr_calculated, R_sfr_scipy, atol=tolerance)
-    max_error_aurora_robot = np.max(np.abs(R_sfr_calculated - R_sfr_scipy))
-    if aurora_to_robot_match:
-        print(f"AuroraからRobotへの変換: 一致 (最大誤差: {max_error_aurora_robot:.6f})")
-        aurora_to_robot_status = "一致"
-    else:
-        print(f"AuroraからRobotへの変換: 不一致 (最大誤差: {max_error_aurora_robot:.6f})")
-        print("計算結果:")
-        print(np.round(R_sfr_calculated, 5))
-        print("scipy結果:")
-        print(np.round(R_sfr_scipy, 5))
-        all_cases = False
-        aurora_to_robot_status = "不一致"
-    
-    # sensorからarmへの変換を適用
-    R_afr_calculated = R_scipy_sen2arm @ R_scipy_sfr[i]
-    R_afr_scipy = R_scipy_afr[i]
-
-    # R_afrが一致しているか確認（設定した許容誤差で判定）
-    sensor_to_arm_match = np.allclose(R_afr_calculated, R_afr_scipy, atol=tolerance)
-    max_error_sensor_arm = np.max(np.abs(R_afr_calculated - R_afr_scipy))
-    if sensor_to_arm_match:
-        print(f"SensorからArmへの変換: 一致 (最大誤差: {max_error_sensor_arm:.6f})")
-        sensor_to_arm_status = "一致"
-    else:
-        print(f"SensorからArmへの変換: 不一致 (最大誤差: {max_error_sensor_arm:.6f})")
-        print("計算結果:")
-        print(np.round(R_afr_calculated, 5))
-        print("scipy結果:")
-        print(np.round(R_afr_scipy, 5))
-        all_cases = False
-        sensor_to_arm_status = "不一致"
-    
-    # 結果をリストに追加
-    results.append({
-        'ケース番号': i + 1,
-        'Aurora_Roll': Sensor_from_aurora[i][0],
-        'Aurora_Pitch': Sensor_from_aurora[i][1],
-        'Aurora_Yaw': Sensor_from_aurora[i][2],
-        'Robot_Roll': Sensor_from_robot[i][0],
-        'Robot_Pitch': Sensor_from_robot[i][1],
-        'Robot_Yaw': Sensor_from_robot[i][2],
-        'Arm_Roll': Arm_from_robot[i][0],
-        'Arm_Pitch': Arm_from_robot[i][1],
-        'Arm_Yaw': Arm_from_robot[i][2],
-        'Aurora→Robot変換': aurora_to_robot_status,
-        'Sensor→Arm変換': sensor_to_arm_status,
-        'Aurora→Robot_Max_Error': max_error_aurora_robot,
-        'Sensor→Arm_Max_Error': max_error_sensor_arm
-    })
-
-# 最終結果の出力
-if all_cases:
-    print(f"\n=== 全てのケースで一致（許容誤差: {tolerance}） ===")
-else:
-    print(f"\n=== 一部のケースで不一致がありました（許容誤差: {tolerance}） ===")
-
-# DataFrameに変換してCSV出力
-df = pd.DataFrame(results)
-
-# CSV出力
-csv_filename = 'rotation_matrix_verification_results.csv'
-df.to_csv(csv_filename, index=False, encoding='utf-8')
-print(f"\n結果を {csv_filename} に出力しました")
-
-# サマリー情報も出力
-print(f"\n=== サマリー（許容誤差: {tolerance}） ===")
-print(f"総ケース数: {len(results)}")
-print(f"Aurora→Robot変換 一致: {sum(1 for r in results if r['Aurora→Robot変換'] == '一致')}件")
-print(f"Aurora→Robot変換 不一致: {sum(1 for r in results if r['Aurora→Robot変換'] == '不一致')}件")
-print(f"Sensor→Arm変換 一致: {sum(1 for r in results if r['Sensor→Arm変換'] == '一致')}件")
-print(f"Sensor→Arm変換 不一致: {sum(1 for r in results if r['Sensor→Arm変換'] == '不一致')}件")
-
-# エラーの統計も出力
-aurora_robot_errors = [r['Aurora→Robot_Max_Error'] for r in results]
-sensor_arm_errors = [r['Sensor→Arm_Max_Error'] for r in results]
-
-print(f"\nAurora→Robot変換の最大エラー: {max(aurora_robot_errors):.6f}")
-print(f"Aurora→Robot変換の平均エラー: {np.mean(aurora_robot_errors):.6f}")
-print(f"Sensor→Arm変換の最大エラー: {max(sensor_arm_errors):.6f}")
-print(f"Sensor→Arm変換の平均エラー: {np.mean(sensor_arm_errors):.6f}")
+if __name__ == "__main__":
+    main()
