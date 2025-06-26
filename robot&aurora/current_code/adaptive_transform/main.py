@@ -63,7 +63,7 @@ if __name__ == "__main__":
         y_range=(-50, 50),                     # Y coordinate range (start_value, end_value)
         z_range=(75, 175),                     # Z coordinate range (start_value, end_value)
         divisions=2,                           # Number of divisions (divisions per axis for divisions^3 regions)
-        data_file='robot&aurora/current_code/calibration_data/pose_R0-0-45_T100-0-0_ARM180-0-0_SEN0-0-45_n0_qn0.csv',  # Data file path
-        input_point=[70.71068,-141.42136,95.0],             # Coordinates of point to transform [x, y, z]
-        input_quaternion=[0.48296,-0.22414,0.12941,0.83652]          # Quaternion representing pose [x, y, z, w]
+        data_file='robot&aurora/current_code/calibration_data/aurora_robot_pose_log_new.csv',  # Data file path
+        input_point=[14.3,-18.51,-143.62],             # Coordinates of point to transform [x, y, z]
+        input_quaternion=[-0.822,0.57,-0.003,0.013]          # Quaternion representing pose [x, y, z, w]
     )
