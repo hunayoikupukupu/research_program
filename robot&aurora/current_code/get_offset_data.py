@@ -45,7 +45,7 @@ def move_to_initial_pose(arm, fixed_position, initial_pose):
         yaw=yaw_init,
         wait=True
     )
-    time.sleep(2)  # 安定するまで待機
+    time.sleep(3)  # 安定するまで待機
 
 def collect_single_axis_data(arm, aurora, fixed_position, initial_pose, axis, angle_range, step_size):
     """単一軸を変化させてデータを収集"""
@@ -105,7 +105,7 @@ def collect_single_axis_data(arm, aurora, fixed_position, initial_pose, axis, an
                 yaw=current_yaw,
                 wait=True
             )
-            time.sleep(1)
+            time.sleep(3)
             
             # データ取得
             robot_pos = arm.get_position()
@@ -133,7 +133,7 @@ def collect_single_axis_data(arm, aurora, fixed_position, initial_pose, axis, an
             }
             
             data_points.append(data_point)
-            time.sleep(1)
+            time.sleep(2)
             
         except Exception as e:
             print(f"    エラー（角度 {angle}°）: {e}")
@@ -317,7 +317,7 @@ if __name__ == "__main__":
         pitch_range=(-60, 30),                 # ピッチ角の範囲（度単位）
         yaw_range=(-170, 180),                   # ヨー角の範囲（度単位）
         step_size=10,                          # 角度のステップサイズ（度単位）
-        output_file="robot&aurora/current_code/calibration_data/aurora_robot_sequential_rotation_log.csv",
+        output_file="robot&aurora/current_code/offset_test_data/aurora_robot_sequential_rotation_log_y148.5.csv",
         robot_ip="192.168.1.155",
         aurora_port="COM3"
     )
