@@ -43,6 +43,7 @@ def move_to_initial_pose(arm, fixed_position, initial_pose):
         roll=roll_init,
         pitch=pitch_init,
         yaw=yaw_init,
+        speed=50,
         wait=True
     )
     time.sleep(3)  # 安定するまで待機
@@ -103,6 +104,7 @@ def collect_single_axis_data(arm, aurora, fixed_position, initial_pose, axis, an
                 roll=current_roll,
                 pitch=current_pitch,
                 yaw=current_yaw,
+                speed=50,
                 wait=True
             )
             time.sleep(3)
@@ -317,7 +319,7 @@ if __name__ == "__main__":
         pitch_range=(-60, 30),                 # ピッチ角の範囲（度単位）
         yaw_range=(-170, 180),                   # ヨー角の範囲（度単位）
         step_size=10,                          # 角度のステップサイズ（度単位）
-        output_file="robot&aurora/current_code/offset_test_data/aurora_robot_sequential_rotation_log_y148.5.csv",
+        output_file="robot&aurora/current_code/offset_test_data/aurora_robot_sequential_rotation_log_y-1.5.csv",
         robot_ip="192.168.1.155",
         aurora_port="COM3"
     )

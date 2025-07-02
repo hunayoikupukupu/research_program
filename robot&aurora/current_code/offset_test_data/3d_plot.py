@@ -8,7 +8,7 @@ plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.rcParams['axes.unicode_minus'] = False
 
 # CSVファイルパスを設定
-csv_file_path = r"robot&aurora\current_code\offset_test_data\aurora_robot_sequential_rotation_log_y148.5.csv"
+csv_file_path = r"robot&aurora\current_code\offset_test_data\aurora_robot_sequential_rotation_log_best.csv"
 
 # CSVファイルからデータを読み込み
 try:
