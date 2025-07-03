@@ -218,8 +218,8 @@ def print_transformation_results(R_aurora_to_robot_matrices, T_aurora_to_robot_v
         for row in matrix:
             print(f"  [{row[0]:8.5f}, {row[1]:8.5f}, {row[2]:8.5f}]")
         # Convert to Euler angles (fixed-axis rotation)
-        euler_xyz = R.from_matrix(matrix).as_euler('xyz', degrees=True)
-        print(f"  Euler angles (xyz, deg): [{euler_xyz[0]:7.2f}, {euler_xyz[1]:7.2f}, {euler_xyz[2]:7.2f}]")
+        euler_zyx = R.from_matrix(matrix).as_euler('zyx', degrees=True)
+        print(f"  Euler angles (zyx, deg): [{euler_zyx[0]:7.2f}, {euler_zyx[1]:7.2f}, {euler_zyx[2]:7.2f}]")
     else:
         print("  Array is empty or None")
 
@@ -236,8 +236,8 @@ def print_transformation_results(R_aurora_to_robot_matrices, T_aurora_to_robot_v
         for row in matrix:
             print(f"  [{row[0]:8.5f}, {row[1]:8.5f}, {row[2]:8.5f}]")
         # Convert to Euler angles (fixed-axis rotation)
-        euler_xyz = R.from_matrix(matrix).as_euler('xyz', degrees=True)
-        print(f"  Euler angles (xyz, deg): [{euler_xyz[0]:7.2f}, {euler_xyz[1]:7.2f}, {euler_xyz[2]:7.2f}]")
+        euler_zyx = R.from_matrix(matrix).as_euler('zyx', degrees=True)
+        print(f"  Euler angles (zyx, deg): [{euler_zyx[0]:7.2f}, {euler_zyx[1]:7.2f}, {euler_zyx[2]:7.2f}]")
     else:
         print("  Array is empty or None")
 
@@ -305,19 +305,6 @@ def validate_transformation(P1, P2, R_matrix, t_vector, threshold=1.0):
     
     return validation_results
 
-
-def rotation_matrix_to_euler(R_matrix, degrees=True):
-    """Convert rotation matrix to Euler angles (xyz convention)."""
-    rotation = R.from_matrix(R_matrix)
-    return rotation.as_euler('xyz', degrees=degrees)
-
-
-def euler_to_rotation_matrix(euler_angles, degrees=True):
-    """Convert Euler angles (xyz convention) to rotation matrix."""
-    rotation = R.from_euler('xyz', euler_angles, degrees=degrees)
-    return rotation.as_matrix()
-
-
 def test_transformation_functions():
     """
     Test the transformation functions with known data.
@@ -333,7 +320,7 @@ def test_transformation_functions():
     ], dtype=float)
     
     # Apply known transformation
-    true_R = euler_to_rotation_matrix([30, 45, 60], degrees=True)
+    true_R = R.from_euler('zyx', [30, 45, 60], degrees=True).as_matrix()
     true_t = np.array([10, 20, 30])
     
     # P1 = R * P2 + t の関係で変換後の点群を作成

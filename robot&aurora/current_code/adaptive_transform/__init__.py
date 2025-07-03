@@ -14,8 +14,6 @@ from .utils import (
     estimate_transform_matrix,
     transformation_error,
     validate_transformation,
-    rotation_matrix_to_euler,
-    euler_to_rotation_matrix,
     test_transformation_functions
 )
 from .main import main
@@ -35,8 +33,6 @@ __all__ = [
     'estimate_transform_matrix',
     'transformation_error',
     'validate_transformation',
-    'rotation_matrix_to_euler',
-    'euler_to_rotation_matrix',
     'test_transformation_functions',
     'main'
 ]

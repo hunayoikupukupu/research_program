@@ -4,7 +4,7 @@ Core module containing the AdaptiveTransform class for coordinate transformation
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from scipy.optimize import least_squares
+
 # Note: find_transformation and estimate_transform_matrix are now in utils.py
 # They will be imported directly in the calculate_transformations and calculate_arm_transformations methods
 
@@ -195,7 +195,7 @@ class AdaptiveTransform:
         rotation_after = rotation_A2B * rotation_before
 
         # Express transformed orientation as Euler angles and quaternion
-        euler_after = rotation_after.as_euler('xyz', degrees=True)
+        euler_after = rotation_after.as_euler('zyx', degrees=True)
         quaternion_after = rotation_after.as_quat()
         
         return point_after, euler_after, quaternion_after
@@ -321,7 +321,7 @@ class AdaptiveTransform:
             if len(self.transform_robot_roll[i]) > 0:
                 # Calculate rotation matrix from robot Euler angles for the region
                 for r, p, y in zip(self.transform_robot_roll[i], self.transform_robot_pitch[i], self.transform_robot_yaw[i]):
-                    rot = R.from_euler('xyz', [r, p, y], degrees=True)
+                    rot = R.from_euler('zyx', [r, p, y], degrees=True)
                     R_matrices_arms.append(rot.as_matrix())
                 
                 # Calculate rotation matrix from sensor quaternions for the region
