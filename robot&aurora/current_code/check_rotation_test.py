@@ -53,11 +53,11 @@ def verify_csv_transformations(csv_file_path, tolerance=0.001):
     print("="*60)
     
     # 変換用の回転行列を事前に計算
-    # Aurora→Robot変換（Z軸45度回転と仮定）
-    R_aurora_to_robot = R.from_euler('xyz', [20, -55, 167], degrees=True).as_matrix()
+    # Aurora→Robot変換
+    R_aurora_to_robot = R.from_euler('zyx', [167, -55, 20], degrees=True).as_matrix()
     
-    # Sensor→Arm変換（Z軸45度回転と仮定）
-    R_sensor_to_arm = R.from_euler('xyz', [11, -5, -130], degrees=True).as_matrix()
+    # Sensor→Arm変換
+    R_sensor_to_arm = R.from_euler('zyx', [-130, -5, 11], degrees=True).as_matrix()
     
     # 結果を格納するリスト
     verification_results = []
@@ -86,12 +86,16 @@ def verify_csv_transformations(csv_file_path, tolerance=0.001):
         ]
         
         print(f"\n=== Test Pattern {test_pattern}: Aurora[{aurora_euler[0]:.1f}, {aurora_euler[1]:.1f}, {aurora_euler[2]:.1f}] ===")
-        
+
+        aurora_euler_ypr = [aurora_euler[2], aurora_euler[1], aurora_euler[0]]
+        robot_euler_ypr = [robot_euler[2], robot_euler[1], robot_euler[0]]
+        arm_euler_ypr = [arm_euler[2], arm_euler[1], arm_euler[0]]
+
         # 各座標系の回転行列を計算
-        R_aurora = R.from_euler('xyz', aurora_euler, degrees=True).as_matrix()
-        R_robot_actual = R.from_euler('xyz', robot_euler, degrees=True).as_matrix()
-        R_arm_actual = R.from_euler('xyz', arm_euler, degrees=True).as_matrix()
-        
+        R_aurora = R.from_euler('zyx', aurora_euler_ypr, degrees=True).as_matrix()
+        R_robot_actual = R.from_euler('zyx', robot_euler_ypr, degrees=True).as_matrix()
+        R_arm_actual = R.from_euler('zyx', arm_euler_ypr, degrees=True).as_matrix()
+
         # 1. Aurora→Robot変換の検証
         R_robot_calculated = R_aurora_to_robot @ R_aurora
         aurora_to_robot_match = np.allclose(R_robot_calculated, R_robot_actual, atol=tolerance)
@@ -106,8 +110,8 @@ def verify_csv_transformations(csv_file_path, tolerance=0.001):
             
             # 詳細な差分を表示
             print("  計算結果のオイラー角:")
-            calculated_euler = R.from_matrix(R_robot_calculated).as_euler('xyz', degrees=True)
-            print(f"    [{calculated_euler[0]:.4f}, {calculated_euler[1]:.4f}, {calculated_euler[2]:.4f}]")
+            calculated_euler = R.from_matrix(R_robot_calculated).as_euler('zyx', degrees=True)
+            print(f"    [{calculated_euler[2]:.4f}, {calculated_euler[1]:.4f}, {calculated_euler[0]:.4f}]")
             print("  実際の結果のオイラー角:")
             print(f"    [{robot_euler[0]:.4f}, {robot_euler[1]:.4f}, {robot_euler[2]:.4f}]")
         
@@ -125,8 +129,8 @@ def verify_csv_transformations(csv_file_path, tolerance=0.001):
             
             # 詳細な差分を表示
             print("  計算結果のオイラー角:")
-            calculated_euler = R.from_matrix(R_arm_calculated).as_euler('xyz', degrees=True)
-            print(f"    [{calculated_euler[0]:.4f}, {calculated_euler[1]:.4f}, {calculated_euler[2]:.4f}]")
+            calculated_euler = R.from_matrix(R_arm_calculated).as_euler('zyx', degrees=True)
+            print(f"    [{calculated_euler[2]:.4f}, {calculated_euler[1]:.4f}, {calculated_euler[0]:.4f}]")
             print("  実際の結果のオイラー角:")
             print(f"    [{arm_euler[0]:.4f}, {arm_euler[1]:.4f}, {arm_euler[2]:.4f}]")
         
