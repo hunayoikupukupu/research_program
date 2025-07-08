@@ -196,9 +196,10 @@ class AdaptiveTransform:
 
         # Express transformed orientation as Euler angles and quaternion
         euler_after = rotation_after.as_euler('zyx', degrees=True)
+        euler_rpy = np.array([euler_after[2], euler_after[1], euler_after[0]])  # Convert to roll-pitch-yaw order
         quaternion_after = rotation_after.as_quat()
         
-        return point_after, euler_after, quaternion_after
+        return point_after, euler_rpy, quaternion_after
 
     def transform_coordinates(self, point, quaternion, R_aurora_to_robot_matrices, T_aurora_to_robot_vectors, R_sensor_to_arm_matrices):
         """
@@ -321,7 +322,7 @@ class AdaptiveTransform:
             if len(self.transform_robot_roll[i]) > 0:
                 # Calculate rotation matrix from robot Euler angles for the region
                 for r, p, y in zip(self.transform_robot_roll[i], self.transform_robot_pitch[i], self.transform_robot_yaw[i]):
-                    rot = R.from_euler('zyx', [r, p, y], degrees=True)
+                    rot = R.from_euler('zyx', [y, p, r], degrees=True)
                     R_matrices_arms.append(rot.as_matrix())
                 
                 # Calculate rotation matrix from sensor quaternions for the region

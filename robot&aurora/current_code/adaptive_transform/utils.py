@@ -219,7 +219,7 @@ def print_transformation_results(R_aurora_to_robot_matrices, T_aurora_to_robot_v
             print(f"  [{row[0]:8.5f}, {row[1]:8.5f}, {row[2]:8.5f}]")
         # Convert to Euler angles (fixed-axis rotation)
         euler_zyx = R.from_matrix(matrix).as_euler('zyx', degrees=True)
-        print(f"  Euler angles (zyx, deg): [{euler_zyx[0]:7.2f}, {euler_zyx[1]:7.2f}, {euler_zyx[2]:7.2f}]")
+        print(f"  Euler angles (zyx, deg): [{euler_zyx[2]:7.2f}, {euler_zyx[1]:7.2f}, {euler_zyx[0]:7.2f}]")
     else:
         print("  Array is empty or None")
 
@@ -237,7 +237,7 @@ def print_transformation_results(R_aurora_to_robot_matrices, T_aurora_to_robot_v
             print(f"  [{row[0]:8.5f}, {row[1]:8.5f}, {row[2]:8.5f}]")
         # Convert to Euler angles (fixed-axis rotation)
         euler_zyx = R.from_matrix(matrix).as_euler('zyx', degrees=True)
-        print(f"  Euler angles (zyx, deg): [{euler_zyx[0]:7.2f}, {euler_zyx[1]:7.2f}, {euler_zyx[2]:7.2f}]")
+        print(f"  Euler angles (zyx, deg): [{euler_zyx[2]:7.2f}, {euler_zyx[1]:7.2f}, {euler_zyx[0]:7.2f}]")
     else:
         print("  Array is empty or None")
 

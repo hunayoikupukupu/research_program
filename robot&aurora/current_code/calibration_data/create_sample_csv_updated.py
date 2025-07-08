@@ -19,7 +19,7 @@ def generate_synthetic_data(
     """
     ロボット座標系とAurora座標系の変換関係に基づいて合成データを生成する
     
-    :param rotation_euler_deg_aur2rob: 回転角度（オイラー角、度数法）[rx, ry, rz]（固定軸回転xyz）
+    :param rotation_euler_deg_aur2rob: 回転角度（オイラー角、度数法）[rx, ry, rz]（固定軸回転zyx）
     :param translation_vector_aur2rob: 並進ベクトル [tx, ty, tz]
     :param x_range: X座標の範囲 (開始値, 終了値)
     :param y_range: Y座標の範囲 (開始値, 終了値)
@@ -30,8 +30,12 @@ def generate_synthetic_data(
     :param add_quaternion_noise: クォータニオンに追加するガウスノイズの標準偏差
     :return: 生成したデータポイント
     """
-    # 回転と並進を変換行列に変換（固定軸回転xyz）
-    rotation_aur2rob = R.from_euler('xyz', rotation_euler_deg_aur2rob, degrees=True)
+
+    euler_aur2rob_ypr = [rotation_euler_deg_aur2rob[2],
+                         rotation_euler_deg_aur2rob[1],
+                         rotation_euler_deg_aur2rob[0]]  # Aurora→Robotのオイラー角をYPR順に変換 
+    # 回転と並進を変換行列に変換（固定軸回転zyx）
+    rotation_aur2rob = R.from_euler('zyx', euler_aur2rob_ypr, degrees=True)
     R_matrix_aur2rob = rotation_aur2rob.as_matrix()
     # 回転行列を小数点第5位で四捨五入して表示
     R_matrix_aur2rob_rounded = np.round(R_matrix_aur2rob, 5)
@@ -48,16 +52,22 @@ def generate_synthetic_data(
     else:
         raise ValueError("Either step_size must be specified")
     
+    euler_sen2arm_ypr = [rotation_euler_deg_sen2arm[2],
+                         rotation_euler_deg_sen2arm[1],
+                         rotation_euler_deg_sen2arm[0]]  # センサー→アームのオイラー角をYPR順に変換
     # 出力するAurora姿勢情報の計算
     # センサー座標系からアーム座標系への回転
-    rotation_sen2arm = R.from_euler('xyz', rotation_euler_deg_sen2arm, degrees=True)
+    rotation_sen2arm = R.from_euler('zyx', euler_sen2arm_ypr, degrees=True)
     R_matrix_sen2arm = rotation_sen2arm.as_matrix()
     # センサー→アーム回転行列を小数点第5位で四捨五入して表示
     R_matrix_sen2arm_rounded = np.round(R_matrix_sen2arm, 5)
     print(f"R_matrix_sen2arm:\n{R_matrix_sen2arm_rounded}")
     
+    robot_arm_euler_ypr = [robot_arm_euler_deg[2],
+                           robot_arm_euler_deg[1],
+                           robot_arm_euler_deg[0]]  # ロボットアームのオイラー角をYPR順に変換
     # ロボットアームの回転
-    rotation_arm = R.from_euler('xyz', robot_arm_euler_deg, degrees=True)
+    rotation_arm = R.from_euler('zyx', robot_arm_euler_ypr, degrees=True)
     R_matrix_arm = rotation_arm.as_matrix()
     # ロボット座標系におけるセンサー姿勢をアーム姿勢に変換
     R_matrix_sensor_from_robot = R_matrix_sen2arm.T @ R_matrix_arm
@@ -65,7 +75,10 @@ def generate_synthetic_data(
     rotation_sensor_from_aurora = R.from_matrix(R_matrix_sensor_from_aurora)
     # センサー姿勢をオイラー角とクォータニオンに変換
     quaternion_sensor_from_aurora = rotation_sensor_from_aurora.as_quat()
-    euler_sensor_from_aurora = rotation_sensor_from_aurora.as_euler('xyz', degrees=True)
+    euler_sensor_from_aurora_ypr = rotation_sensor_from_aurora.as_euler('zyx', degrees=True)
+    euler_sensor_from_aurora = [euler_sensor_from_aurora_ypr[2],
+                                 euler_sensor_from_aurora_ypr[1],
+                                 euler_sensor_from_aurora_ypr[0]]  # RPY順に変換
     print(f"euler_sensor_from_aurora: {euler_sensor_from_aurora}")
 
     # 出力ディレクトリの確保
@@ -234,9 +247,9 @@ if __name__ == "__main__":
     
     # main関数の呼び出し
     result = main(
-        x_range=(250, 350),  # X座標の範囲（mm）[開始値, 終了値]
+        x_range=(75, 175),  # X座標の範囲（mm）[開始値, 終了値]
         y_range=(-50, 50),   # Y座標の範囲（mm）[開始値, 終了値]
-        z_range=(75, 175),   # Z座標の範囲（mm）[開始値, 終了値]
+        z_range=(-350, -250),   # Z座標の範囲（mm）[開始値, 終了値]
         rotation_euler_deg_aur2rob=rotation_euler_deg_aur2rob,
         translation_vector_aur2rob=translation_vector_aur2rob,
         robot_arm_euler_deg=robot_arm_euler_deg,
