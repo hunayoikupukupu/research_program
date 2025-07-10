@@ -226,10 +226,10 @@ def generate_output_filename(rotation_euler_deg_aur2rob, translation_vector_aur2
 
 if __name__ == "__main__":
     # パラメータを一か所で設定
-    rotation_euler_deg_aur2rob = [0,   0,  45]  # Aurora座標系からロボット座標系への回転角度（度）[rx, ry, rz]
+    rotation_euler_deg_aur2rob = [30,   120,  -45]  # Aurora座標系からロボット座標系への回転角度（度）[rx, ry, rz]
     translation_vector_aur2rob = [0,0,0]  # Aurora座標系からロボット座標系への並進ベクトル（mm）[tx, ty, tz]
-    robot_arm_euler_deg = [0, 0, 180]  # ロボットアームのオイラー角（度）[roll, pitch, yaw]
-    rotation_euler_deg_sen2arm = [   0,   0,  45]  # センサー座標系からアーム座標系への回転角度（度）[rx, ry, rz]
+    robot_arm_euler_deg = [50, 120, 180]  # ロボットアームのオイラー角（度）[roll, pitch, yaw]
+    rotation_euler_deg_sen2arm = [  -60,   -80,  150]  # センサー座標系からアーム座標系への回転角度（度）[rx, ry, rz]
     add_noise = 0  # 位置ノイズの標準偏差（mm）
     add_quaternion_noise = 0  # クォータニオンノイズの標準偏差
     

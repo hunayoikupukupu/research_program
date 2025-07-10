@@ -3,6 +3,9 @@ from scipy.spatial.transform import Rotation as R
 # Roll = -20°, Pitch = 91°, Yaw = 43° （extrinsic zyx）
 rA = R.from_euler('zyx', [43, 91, -20], degrees=True)
 
+# print("Rotation_object: {}".format(rA))
+R_matrix = rA.as_matrix()
+print("Rotation_matrix:\n{}".format(R_matrix))
 angles = rA.as_euler('zyx', degrees=True)
 quaternion = rA.as_quat()
 
@@ -13,6 +16,9 @@ print("Quaternion: [{:.3f}, {:.3f}, {:.3f}, {:.3f}]".format(quaternion[0], quate
 # Roll = 160°, Pitch = 89°, Yaw = -137° （extrinsic zyx）
 rA = R.from_euler('zyx', [-137, 89, 160], degrees=True)
 
+# print("Rotation_object: {}".format(rA))
+R_matrix = rA.as_matrix()
+print("Rotation_matrix:\n{}".format(R_matrix))
 angles = rA.as_euler('zyx', degrees=True)
 quaternion = rA.as_quat()
 
