@@ -86,3 +86,26 @@ def generateRobotArm(
         Vector(position[0], position[1], position[2]),
         EulerRotation(position[3], position[4], position[5])
     )
+
+class AxisAngle:
+    def __init__(self, rx: float, ry: float, rz: float) -> None:
+        self.rx = rx
+        self.ry = ry
+        self.rz = rz
+
+class RobotArmAxisAngle:
+    def __init__(self, code: int, pos: Vector, rot: AxisAngle) -> None:
+        self.code = code
+        self.pos = pos
+        self.rot = rot
+
+def generateRobotArmAxisAngle(
+    armPose: Tuple[int, List[float]]
+) -> RobotArmAxisAngle:
+    code = armPose[0]
+    position = armPose[1]
+    return RobotArmAxisAngle(
+        code,
+        Vector(position[0], position[1], position[2]),
+        AxisAngle(position[3], position[4], position[5])
+    )
