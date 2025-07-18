@@ -1,4 +1,4 @@
-robot_x,robot_y,robot_z,robot_roll,robot_pitch,robot_yaw,aurora_x,aurora_y,aurora_z,aurora_quat_x,aurora_quat_y,aurora_quat_z,aurora_quat_w
+robot_x,robot_y,robot_z,robot_rx,robot_ry,robot_rz,aurora_x,aurora_y,aurora_z,aurora_quat_x,aurora_quat_y,aurora_quat_z,aurora_quat_w
 75.0,-50.0,-350.0,0,0,180,298.15202,-10.57259,204.00635,-0.12495,0.90131,0.40341,0.09635
 75.0,-50.0,-330.0,0,0,180,280.47435,-14.10813,195.3461,-0.12495,0.90131,0.40341,0.09635
 75.0,-50.0,-310.0,0,0,180,262.79668,-17.64366,186.68584,-0.12495,0.90131,0.40341,0.09635

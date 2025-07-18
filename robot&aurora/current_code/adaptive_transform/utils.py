@@ -171,10 +171,10 @@ def transform_pose(input_point, input_quaternion, R_aurora_to_robot_matrices, T_
         transformer (AdaptiveTransform): AdaptiveTransform object
         
     Returns:
-        tuple: Transformed coordinates, Euler angles, quaternions
+        tuple: Transformed coordinates, R_vectors, quaternions
     """
     # Execute coordinate transformation
-    sensor_point_from_robot, sensor_euler_from_robot, sensor_quat_from_robot, arm_euler_from_robot, arm_quat_from_robot = transformer.transform_coordinates(
+    sensor_point_from_robot, sensor_R_vector_from_robot, sensor_quat_from_robot, arm_R_vector_from_robot, arm_quat_from_robot = transformer.transform_coordinates(
         input_point,
         input_quaternion,
         R_aurora_to_robot_matrices,
@@ -188,19 +188,19 @@ def transform_pose(input_point, input_quaternion, R_aurora_to_robot_matrices, T_
     if sensor_point_from_robot is not None:
         # Round to 4 decimal places
         rounded_sensor_point = np.round(sensor_point_from_robot, 4)
-        rounded_sensor_euler = np.round(sensor_euler_from_robot, 4)
+        rounded_sensor_R_vector = np.round(sensor_R_vector_from_robot, 4)
         rounded_sensor_quat = np.round(sensor_quat_from_robot, 4)
-        print(f"After transformation (Sensor_from_Robot): coordinates [{rounded_sensor_point[0]:.4f}, {rounded_sensor_point[1]:.4f}, {rounded_sensor_point[2]:.4f}], Euler angles [{rounded_sensor_euler[0]:.4f}, {rounded_sensor_euler[1]:.4f}, {rounded_sensor_euler[2]:.4f}], quaternion [{rounded_sensor_quat[0]:.4f}, {rounded_sensor_quat[1]:.4f}, {rounded_sensor_quat[2]:.4f}, {rounded_sensor_quat[3]:.4f}]")
+        print(f"After transformation (Sensor_from_Robot): coordinates [{rounded_sensor_point[0]:.4f}, {rounded_sensor_point[1]:.4f}, {rounded_sensor_point[2]:.4f}], R_vector [{rounded_sensor_R_vector[0]:.4f}, {rounded_sensor_R_vector[1]:.4f}, {rounded_sensor_R_vector[2]:.4f}], quaternion [{rounded_sensor_quat[0]:.4f}, {rounded_sensor_quat[1]:.4f}, {rounded_sensor_quat[2]:.4f}, {rounded_sensor_quat[3]:.4f}]")
     else:
         print("Transformation failed: No transformation matrix found for specified coordinates")
 
-    if arm_euler_from_robot is not None:
+    if arm_R_vector_from_robot is not None:
         # Round to 4 decimal places
-        rounded_arm_euler = np.round(arm_euler_from_robot, 4)
+        rounded_arm_R_vector = np.round(arm_R_vector_from_robot, 4)
         rounded_arm_quat = np.round(arm_quat_from_robot, 4)
-        print(f"After transformation (Arm_from_Robot): Euler angles [{rounded_arm_euler[0]:.4f}, {rounded_arm_euler[1]:.4f}, {rounded_arm_euler[2]:.4f}], quaternion [{rounded_arm_quat[0]:.4f}, {rounded_arm_quat[1]:.4f}, {rounded_arm_quat[2]:.4f}, {rounded_arm_quat[3]:.4f}]")
-    
-    return sensor_point_from_robot, sensor_euler_from_robot, sensor_quat_from_robot, arm_euler_from_robot, arm_quat_from_robot
+        print(f"After transformation (Arm_from_Robot): R_vector [{rounded_arm_R_vector[0]:.4f}, {rounded_arm_R_vector[1]:.4f}, {rounded_arm_R_vector[2]:.4f}], quaternion [{rounded_arm_quat[0]:.4f}, {rounded_arm_quat[1]:.4f}, {rounded_arm_quat[2]:.4f}, {rounded_arm_quat[3]:.4f}]")
+
+    return sensor_point_from_robot, sensor_R_vector_from_robot, sensor_quat_from_robot, arm_R_vector_from_robot, arm_quat_from_robot
 
 
 def print_transformation_results(R_aurora_to_robot_matrices, T_aurora_to_robot_vectors, R_sensor_to_arm_matrices):
@@ -217,9 +217,12 @@ def print_transformation_results(R_aurora_to_robot_matrices, T_aurora_to_robot_v
         matrix = R_aurora_to_robot_matrices[0]
         for row in matrix:
             print(f"  [{row[0]:8.5f}, {row[1]:8.5f}, {row[2]:8.5f}]")
-        # Convert to Euler angles (fixed-axis rotation)
+        # Convert to R_vectors (fixed-axis rotation)
         euler_zyx = R.from_matrix(matrix).as_euler('zyx', degrees=True)
         print(f"  Euler angles (zyx, deg): [{euler_zyx[2]:7.2f}, {euler_zyx[1]:7.2f}, {euler_zyx[0]:7.2f}]")
+        # Convert to R_vectors
+        R_vector = R.from_matrix(matrix).as_rotvec(degrees=True)
+        print(f"  R_vector: [{R_vector[0]:8.5f}, {R_vector[1]:8.5f}, {R_vector[2]:8.5f}]")
     else:
         print("  Array is empty or None")
 
@@ -238,6 +241,9 @@ def print_transformation_results(R_aurora_to_robot_matrices, T_aurora_to_robot_v
         # Convert to Euler angles (fixed-axis rotation)
         euler_zyx = R.from_matrix(matrix).as_euler('zyx', degrees=True)
         print(f"  Euler angles (zyx, deg): [{euler_zyx[2]:7.2f}, {euler_zyx[1]:7.2f}, {euler_zyx[0]:7.2f}]")
+        # Convert to R_vectors
+        R_vector = R.from_matrix(matrix).as_rotvec(degrees=True)
+        print(f"  R_vector: [{R_vector[0]:8.5f}, {R_vector[1]:8.5f}, {R_vector[2]:8.5f}]")
     else:
         print("  Array is empty or None")
 
@@ -304,42 +310,3 @@ def validate_transformation(P1, P2, R_matrix, t_vector, threshold=1.0):
     }
     
     return validation_results
-
-def test_transformation_functions():
-    """
-    Test the transformation functions with known data.
-    """
-    print("Testing transformation functions...")
-    
-    # Create test data
-    original_points = np.array([
-        [1, 0, 0],
-        [0, 1, 0], 
-        [0, 0, 1],
-        [1, 1, 1]
-    ], dtype=float)
-    
-    # Apply known transformation
-    true_R = R.from_euler('zyx', [30, 45, 60], degrees=True).as_matrix()
-    true_t = np.array([10, 20, 30])
-    
-    # P1 = R * P2 + t の関係で変換後の点群を作成
-    transformed_points = (true_R @ original_points.T).T + true_t
-    
-    # Estimate transformation: find_transformation(P2, P1)
-    estimated_R, estimated_t = find_transformation(original_points, transformed_points)
-    
-    # Check results
-    R_error = np.linalg.norm(true_R - estimated_R, 'fro')
-    t_error = np.linalg.norm(true_t - estimated_t)
-    
-    print(f"Rotation matrix error: {R_error:.6f}")
-    print(f"Translation vector error: {t_error:.6f}")
-    
-    # Validation
-    validation = validate_transformation(transformed_points, original_points, estimated_R, estimated_t)
-    print(f"Validation - Mean error: {validation['mean_error']:.6f}")
-    print(f"Validation - Is valid rotation: {validation['is_valid_rotation']}")
-    print(f"Validation - Overall valid: {validation['overall_valid']}")
-    
-    return R_error < 1e-10 and t_error < 1e-10

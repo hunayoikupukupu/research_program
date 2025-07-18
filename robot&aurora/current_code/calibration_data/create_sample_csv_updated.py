@@ -6,7 +6,7 @@ import os
 def generate_synthetic_data(
     rotation_euler_deg_aur2rob, 
     translation_vector_aur2rob, 
-    robot_arm_euler_deg,
+    robot_arm_R_vector_deg,
     rotation_euler_deg_sen2arm,
     x_range, 
     y_range, 
@@ -18,9 +18,11 @@ def generate_synthetic_data(
 ):
     """
     ロボット座標系とAurora座標系の変換関係に基づいて合成データを生成する
-    
-    :param rotation_euler_deg_aur2rob: 回転角度（オイラー角、度数法）[rx, ry, rz]（固定軸回転zyx）
+
+    :param rotation_euler_deg_aur2rob: 回転角度（オイラー角、度数法）roll, pitch, yaw（固定軸回転zyx）
     :param translation_vector_aur2rob: 並進ベクトル [tx, ty, tz]
+    :param robot_arm_R_vector_deg: ロボットアームの回転ベクトル（度数法）[rx, ry, rz]
+    :param rotation_euler_deg_sen2arm: センサー座標系からアーム座標系への回転角度（オイラー角、度数法）[roll, pitch, yaw]
     :param x_range: X座標の範囲 (開始値, 終了値)
     :param y_range: Y座標の範囲 (開始値, 終了値)
     :param z_range: Z座標の範囲 (開始値, 終了値)
@@ -41,7 +43,6 @@ def generate_synthetic_data(
     R_matrix_aur2rob_rounded = np.round(R_matrix_aur2rob, 5)
     print(f"R_matrix_aur2rob:\n{R_matrix_aur2rob_rounded}")
     print(f"rotation_euler_deg_aur2rob: {rotation_euler_deg_aur2rob}")
-    print(f"rotation_euler_deg_sen2arm: {rotation_euler_deg_sen2arm}")
     
     # サンプリング点を生成
     if step_size is not None:
@@ -52,25 +53,23 @@ def generate_synthetic_data(
     else:
         raise ValueError("Either step_size must be specified")
     
+    # 出力するAurora姿勢情報の計算
     euler_sen2arm_ypr = [rotation_euler_deg_sen2arm[2],
                          rotation_euler_deg_sen2arm[1],
                          rotation_euler_deg_sen2arm[0]]  # センサー→アームのオイラー角をYPR順に変換
-    # 出力するAurora姿勢情報の計算
     # センサー座標系からアーム座標系への回転
     rotation_sen2arm = R.from_euler('zyx', euler_sen2arm_ypr, degrees=True)
     R_matrix_sen2arm = rotation_sen2arm.as_matrix()
     # センサー→アーム回転行列を小数点第5位で四捨五入して表示
     R_matrix_sen2arm_rounded = np.round(R_matrix_sen2arm, 5)
     print(f"R_matrix_sen2arm:\n{R_matrix_sen2arm_rounded}")
+    print(f"rotation_euler_deg_sen2arm: {rotation_euler_deg_sen2arm}")
     
-    robot_arm_euler_ypr = [robot_arm_euler_deg[2],
-                           robot_arm_euler_deg[1],
-                           robot_arm_euler_deg[0]]  # ロボットアームのオイラー角をYPR順に変換
     # ロボットアームの回転
-    rotation_arm = R.from_euler('zyx', robot_arm_euler_ypr, degrees=True)
-    R_matrix_arm = rotation_arm.as_matrix()
+    rotation_arm_from_robot = R.from_rotvec(robot_arm_R_vector_deg, degrees=True)
+    R_matrix_arm_from_robot = rotation_arm_from_robot.as_matrix()
     # ロボット座標系におけるセンサー姿勢をアーム姿勢に変換
-    R_matrix_sensor_from_robot = R_matrix_sen2arm.T @ R_matrix_arm
+    R_matrix_sensor_from_robot = R_matrix_sen2arm.T @ R_matrix_arm_from_robot
     R_matrix_sensor_from_aurora = R_matrix_aur2rob.T @ R_matrix_sensor_from_robot
     rotation_sensor_from_aurora = R.from_matrix(R_matrix_sensor_from_aurora)
     # センサー姿勢をオイラー角とクォータニオンに変換
@@ -125,7 +124,7 @@ def generate_synthetic_data(
                 # データポイントを追加（小数点第5位で四捨五入）
                 data_points.append([
                     round(x, 5), round(y, 5), round(z, 5),
-                    round(robot_arm_euler_deg[0], 5), round(robot_arm_euler_deg[1], 5), round(robot_arm_euler_deg[2], 5),
+                    round(robot_arm_R_vector_deg[0], 5), round(robot_arm_R_vector_deg[1], 5), round(robot_arm_R_vector_deg[2], 5),
                     round(aurora_point[0], 5), round(aurora_point[1], 5), round(aurora_point[2], 5),
                     round(noisy_quaternion[0], 5), round(noisy_quaternion[1], 5), round(noisy_quaternion[2], 5), round(noisy_quaternion[3], 5)
                 ])
@@ -133,7 +132,7 @@ def generate_synthetic_data(
     # CSVファイルに書き込み
     with open(output_file, 'w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['robot_x', 'robot_y', 'robot_z', 'robot_roll', 'robot_pitch', 'robot_yaw', 'aurora_x', 'aurora_y', 'aurora_z', 'aurora_quat_x', 'aurora_quat_y', 'aurora_quat_z', 'aurora_quat_w'])
+        writer.writerow(['robot_x', 'robot_y', 'robot_z', 'robot_rx', 'robot_ry', 'robot_rz', 'aurora_x', 'aurora_y', 'aurora_z', 'aurora_quat_x', 'aurora_quat_y', 'aurora_quat_z', 'aurora_quat_w'])
         writer.writerows(data_points)
     
     print(f"生成したデータポイント数: {len(data_points)}")
@@ -149,7 +148,7 @@ def main(
     z_range,
     rotation_euler_deg_aur2rob=None,
     translation_vector_aur2rob=None, 
-    robot_arm_euler_deg=None,
+    robot_arm_R_vector_deg=None,
     rotation_euler_deg_sen2arm=None,
     step_size=None,
     output_file="robot&aurora/current_code/calibration_data/aurora_robot_pose_log.csv",
@@ -185,7 +184,7 @@ def main(
     return generate_synthetic_data(
         rotation_euler_deg_aur2rob=rotation_euler_deg_aur2rob,
         translation_vector_aur2rob=translation_vector_aur2rob,
-        robot_arm_euler_deg=robot_arm_euler_deg,
+        robot_arm_R_vector_deg=robot_arm_R_vector_deg,
         rotation_euler_deg_sen2arm=rotation_euler_deg_sen2arm,
         x_range=x_range,
         y_range=y_range,
@@ -198,15 +197,15 @@ def main(
 
 
 def generate_output_filename(rotation_euler_deg_aur2rob, translation_vector_aur2rob, 
-                            robot_arm_euler_deg, rotation_euler_deg_sen2arm, add_noise, add_quaternion_noise=0):
+                            robot_arm_R_vector_deg, rotation_euler_deg_sen2arm, add_noise, add_quaternion_noise=0):
     """
     パラメータから動的にファイル名を生成する関数
     
     Args:
-        rotation_euler_deg_aur2rob: Aurora→Robot回転角度 [rx, ry, rz]
+        rotation_euler_deg_aur2rob: Aurora→Robotオイラー角 [roll, pitch, yaw]
         translation_vector_aur2rob: Aurora→Robot並進ベクトル [tx, ty, tz]
-        robot_arm_euler_deg: ロボットアームのオイラー角 [rx, ry, rz]
-        rotation_euler_deg_sen2arm: Sensor→Arm回転角度 [rx, ry, rz]
+        robot_arm_R_vector_deg: ロボットアームの回転ベクトル [rx, ry, rz]
+        rotation_euler_deg_sen2arm: Sensor→Armオイラー角 [roll, pitch, yaw]
         add_noise: 位置ノイズの標準偏差
         add_quaternion_noise: クォータニオンノイズの標準偏差
     
@@ -216,7 +215,7 @@ def generate_output_filename(rotation_euler_deg_aur2rob, translation_vector_aur2
     # 各パラメータを文字列に変換（負の値も含めて）
     rot_str = "-".join(map(str, rotation_euler_deg_aur2rob))
     trans_str = "-".join(map(str, translation_vector_aur2rob))
-    arm_str = "-".join(map(str, robot_arm_euler_deg))
+    arm_str = "-".join(map(str, robot_arm_R_vector_deg))
     sen_str = "-".join(map(str, rotation_euler_deg_sen2arm))
     
     # ファイル名を生成（クォータニオンノイズのパラメータも追加）
@@ -226,10 +225,10 @@ def generate_output_filename(rotation_euler_deg_aur2rob, translation_vector_aur2
 
 if __name__ == "__main__":
     # パラメータを一か所で設定
-    rotation_euler_deg_aur2rob = [30,   120,  -45]  # Aurora座標系からロボット座標系への回転角度（度）[rx, ry, rz]
+    rotation_euler_deg_aur2rob = [30,   120,  -45]  # Aurora座標系からロボット座標系へのオイラー角（度）[roll, pitch, yaw]
     translation_vector_aur2rob = [0,0,0]  # Aurora座標系からロボット座標系への並進ベクトル（mm）[tx, ty, tz]
-    robot_arm_euler_deg = [50, 120, 180]  # ロボットアームのオイラー角（度）[roll, pitch, yaw]
-    rotation_euler_deg_sen2arm = [  -60,   -80,  150]  # センサー座標系からアーム座標系への回転角度（度）[rx, ry, rz]
+    robot_arm_R_vector_deg = [-64.52, 0, 168.04]  # ロボットアームの回転ベクトル（度）[rx, ry, rz]
+    rotation_euler_deg_sen2arm = [  -60,   -80,  150]  # センサー座標系からアーム座標系へのオイラー角（度）[roll, pitch, yaw]
     add_noise = 0  # 位置ノイズの標準偏差（mm）
     add_quaternion_noise = 0  # クォータニオンノイズの標準偏差
     
@@ -237,7 +236,7 @@ if __name__ == "__main__":
     output_file = generate_output_filename(
         rotation_euler_deg_aur2rob,
         translation_vector_aur2rob,
-        robot_arm_euler_deg,
+        robot_arm_R_vector_deg,
         rotation_euler_deg_sen2arm,
         add_noise,
         add_quaternion_noise
@@ -252,7 +251,7 @@ if __name__ == "__main__":
         z_range=(-350, -250),   # Z座標の範囲（mm）[開始値, 終了値]
         rotation_euler_deg_aur2rob=rotation_euler_deg_aur2rob,
         translation_vector_aur2rob=translation_vector_aur2rob,
-        robot_arm_euler_deg=robot_arm_euler_deg,
+        robot_arm_R_vector_deg=robot_arm_R_vector_deg,
         rotation_euler_deg_sen2arm=rotation_euler_deg_sen2arm,
         step_size=20,
         output_file=output_file,  # 動的に生成されたファイル名を使用

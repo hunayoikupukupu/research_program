@@ -34,6 +34,8 @@ def main():
         print("トラッキング開始しました")
         print("-" * 50)
         
+        arm.set_position(x=145, y=0, z=-210, roll=0, pitch=0, yaw=180)
+
         # メインループ
         try:
             while True:

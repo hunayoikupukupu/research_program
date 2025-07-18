@@ -39,9 +39,9 @@ class AdaptiveTransform:
         self.transform_robot_x = [[] for _ in range(self.region_count)]
         self.transform_robot_y = [[] for _ in range(self.region_count)]
         self.transform_robot_z = [[] for _ in range(self.region_count)]
-        self.transform_robot_roll = [[] for _ in range(self.region_count)]
-        self.transform_robot_pitch = [[] for _ in range(self.region_count)]
-        self.transform_robot_yaw = [[] for _ in range(self.region_count)]
+        self.transform_robot_rx = [[] for _ in range(self.region_count)]
+        self.transform_robot_ry = [[] for _ in range(self.region_count)]
+        self.transform_robot_rz = [[] for _ in range(self.region_count)]
         self.transform_aurora_x = [[] for _ in range(self.region_count)]
         self.transform_aurora_y = [[] for _ in range(self.region_count)]
         self.transform_aurora_z = [[] for _ in range(self.region_count)]
@@ -97,7 +97,7 @@ class AdaptiveTransform:
             tuple: Separated data arrays
         """
         robot_x, robot_y, robot_z = [], [], []
-        robot_roll, robot_pitch, robot_yaw = [], [], []
+        robot_rx, robot_ry, robot_rz = [], [], []
         aurora_x, aurora_y, aurora_z = [], [], []
         aurora_quat_x, aurora_quat_y, aurora_quat_z, aurora_quat_w = [], [], [], []
           
@@ -105,9 +105,9 @@ class AdaptiveTransform:
             robot_x.append(xyz[0])
             robot_y.append(xyz[1])
             robot_z.append(xyz[2])
-            robot_roll.append(xyz[3])
-            robot_pitch.append(xyz[4])
-            robot_yaw.append(xyz[5])
+            robot_rx.append(xyz[3])
+            robot_ry.append(xyz[4])
+            robot_rz.append(xyz[5])
             aurora_x.append(xyz[6])
             aurora_y.append(xyz[7])
             aurora_z.append(xyz[8])
@@ -121,9 +121,9 @@ class AdaptiveTransform:
             self.transform_robot_x[region].append(float(xyz[0]))
             self.transform_robot_y[region].append(float(xyz[1]))
             self.transform_robot_z[region].append(float(xyz[2]))
-            self.transform_robot_roll[region].append(float(xyz[3]))
-            self.transform_robot_pitch[region].append(float(xyz[4]))
-            self.transform_robot_yaw[region].append(float(xyz[5]))
+            self.transform_robot_rx[region].append(float(xyz[3]))
+            self.transform_robot_ry[region].append(float(xyz[4]))
+            self.transform_robot_rz[region].append(float(xyz[5]))
             self.transform_aurora_x[region].append(float(xyz[6]))
             self.transform_aurora_y[region].append(float(xyz[7]))
             self.transform_aurora_z[region].append(float(xyz[8]))
@@ -131,8 +131,8 @@ class AdaptiveTransform:
             self.transform_aurora_quat_y[region].append(float(xyz[10]))
             self.transform_aurora_quat_z[region].append(float(xyz[11]))
             self.transform_aurora_quat_w[region].append(float(xyz[12]))
-            
-        return robot_x, robot_y, robot_z, robot_roll, robot_pitch, robot_yaw, aurora_x, aurora_y, aurora_z, aurora_quat_x, aurora_quat_y, aurora_quat_z, aurora_quat_w
+
+        return robot_x, robot_y, robot_z, robot_rx, robot_ry, robot_rz, aurora_x, aurora_y, aurora_z, aurora_quat_x, aurora_quat_y, aurora_quat_z, aurora_quat_w
 
     def calculate_transformations(self):
         """
@@ -182,7 +182,7 @@ class AdaptiveTransform:
             R_matrix_A2B (np.ndarray): Rotation matrix from A to B (3x3)
             
         Returns:
-            tuple: (transformed_point, euler_angles_deg, quaternion)
+            tuple: (transformed_point, R_vector, quaternion)
         """
         # Point transformation: P_B = R * P_A + translation_vector_A2B
         point_after = R_matrix_A2B @ point_before + translation_vector_A2B
@@ -194,13 +194,14 @@ class AdaptiveTransform:
         # For fixed-axis rotation (apply coordinate system B rotation first)
         R_matrix_after = R_matrix_A2B @ R_matrix_before
 
-        # Express transformed orientation as Euler angles and quaternion
+        # Express transformed orientation as Rotation vector and quaternion
         rotation_after = R.from_matrix(R_matrix_after)
-        euler_after = rotation_after.as_euler('zyx', degrees=True)
-        euler_rpy = np.array([euler_after[2], euler_after[1], euler_after[0]])  # Convert to roll-pitch-yaw order
+        R_vector = rotation_after.as_rotvec(degrees=True)
         quaternion_after = rotation_after.as_quat()
+        print("Transformed Rotation Vector:", R_vector)
+        print("Transformed Quaternion:", quaternion_after)
 
-        return point_after, euler_rpy, quaternion_after
+        return point_after, R_vector, quaternion_after
 
     def transform_coordinates(self, point, quaternion, R_aurora_to_robot_matrices, T_aurora_to_robot_vectors, R_sensor_to_arm_matrices):
         """
@@ -214,7 +215,7 @@ class AdaptiveTransform:
             R_sensor_to_arm_matrices (list): List of sensor-to-arm rotation matrices
             
         Returns:
-            tuple: Transformed coordinates, Euler angles, quaternions
+            tuple: Transformed coordinates, Rotation vectors, quaternions
         """
         # Convert input to numpy arrays
         point_array = np.array(point)
@@ -253,7 +254,7 @@ class AdaptiveTransform:
         # Check if transformation matrix for determined region exists
         if R_aurora_to_robot_matrices[region] is not None:
             # Execute final coordinate system transformation
-            robot_point_transformed, robot_euler_transformed, robot_quat_transformed = self.transform_point_and_orientation(
+            robot_point_transformed, robot_R_vector_transformed, robot_quat_transformed = self.transform_point_and_orientation(
                 point_array,
                 quaternion_array,
                 T_aurora_to_robot_vectors[region],
@@ -262,7 +263,7 @@ class AdaptiveTransform:
 
             if R_sensor_to_arm_matrices is not None:
                 # If sensor-to-arm transformation matrix exists, apply additional transformation
-                _, arm_euler_transformed, arm_quat_transformed = self.transform_point_and_orientation(
+                _, arm_R_vector_transformed, arm_quat_transformed = self.transform_point_and_orientation(
                     robot_point_transformed,
                     robot_quat_transformed,
                     np.zeros(3),  # Translation vector is zero
@@ -270,10 +271,10 @@ class AdaptiveTransform:
                 )
             else:
                 # If sensor-to-arm transformation matrix doesn't exist, return robot coordinate system as is
-                arm_euler_transformed = robot_euler_transformed
+                arm_R_vector_transformed = robot_R_vector_transformed
                 arm_quat_transformed = robot_quat_transformed
 
-            return robot_point_transformed, robot_euler_transformed, robot_quat_transformed, arm_euler_transformed, arm_quat_transformed
+            return robot_point_transformed, robot_R_vector_transformed, robot_quat_transformed, arm_R_vector_transformed, arm_quat_transformed
         else:
             # Return None if transformation matrix doesn't exist
             print("Transformation failed: No transformation matrix found for temporary robot coordinates")
@@ -320,10 +321,10 @@ class AdaptiveTransform:
         
         for i in range(self.region_count):
             # Check if data exists for each region
-            if len(self.transform_robot_roll[i]) > 0:
+            if len(self.transform_robot_rx[i]) > 0:
                 # Calculate rotation matrix from robot Euler angles for the region
-                for r, p, y in zip(self.transform_robot_roll[i], self.transform_robot_pitch[i], self.transform_robot_yaw[i]):
-                    rot = R.from_euler('zyx', [y, p, r], degrees=True)
+                for rx, ry, rz in zip(self.transform_robot_rx[i], self.transform_robot_ry[i], self.transform_robot_rz[i]):
+                    rot = R.from_rotvec([rx, ry, rz], degrees=True)
                     R_matrices_arms.append(rot.as_matrix())
                 
                 # Calculate rotation matrix from sensor quaternions for the region
