@@ -76,33 +76,6 @@ def estimate_transform_matrix(R_arms, R_sensors):
     
     return R_transform
 
-
-def transformation_error(P1, P2, R_matrix, t_vector):
-    """
-    Calculate transformation error for given transformation parameters.
-    
-    Args:
-        P1 (np.ndarray): Source points (N x 3)
-        P2 (np.ndarray): Target points (N x 3)
-        R_matrix (np.ndarray): 3x3 rotation matrix
-        t_vector (np.ndarray): 3x1 translation vector
-        
-    Returns:
-        tuple: (mean_error, max_error, rmse)
-    """
-    # Apply transformation
-    P1_transformed = (R_matrix @ P1.T).T + t_vector
-    
-    # Calculate errors
-    errors = np.linalg.norm(P2 - P1_transformed, axis=1)
-    
-    mean_error = np.mean(errors)
-    max_error = np.max(errors)
-    rmse = np.sqrt(np.mean(errors**2))
-    
-    return mean_error, max_error, rmse
-
-
 # =============================================================================
 # Model building and transformation functions
 # =============================================================================
@@ -173,6 +146,7 @@ def transform_pose(input_point, input_quaternion, R_aurora_to_robot_matrices, T_
     Returns:
         tuple: Transformed coordinates, R_vectors, quaternions
     """
+
     # Execute coordinate transformation
     sensor_point_from_robot, sensor_R_vector_from_robot, sensor_quat_from_robot, arm_R_vector_from_robot, arm_quat_from_robot = transformer.transform_coordinates(
         input_point,
@@ -181,24 +155,33 @@ def transform_pose(input_point, input_quaternion, R_aurora_to_robot_matrices, T_
         T_aurora_to_robot_vectors,
         R_sensor_to_arm_matrices
     )
+
+    print("Transformation results:")
+    print(f"Input coordinates: {input_point}")
+    print(f"Input quaternion: {input_quaternion}")
+    print(f"Transformed coordinates (Sensor_from_Robot): {sensor_point_from_robot}")
+    print(f"Transformed R_vector (Sensor_from_Robot): {sensor_R_vector_from_robot}")
+    print(f"Transformed quaternion (Sensor_from_Robot): {sensor_quat_from_robot}")
+    print(f"Transformed R_vector (Arm_from_Robot): {arm_R_vector_from_robot}")
+    print(f"Transformed quaternion (Arm_from_Robot): {arm_quat_from_robot}")
     
-    # Display transformation results
-    print(f"Before transformation (Sensor_from_Aurora): coordinates [{input_point[0]}, {input_point[1]}, {input_point[2]}], quaternion [{input_quaternion[0]}, {input_quaternion[1]}, {input_quaternion[2]}, {input_quaternion[3]}]")
+    # # Display transformation results
+    # print(f"Before transformation (Sensor_from_Aurora): coordinates [{input_point[0]}, {input_point[1]}, {input_point[2]}], quaternion [{input_quaternion[0]}, {input_quaternion[1]}, {input_quaternion[2]}, {input_quaternion[3]}]")
 
-    if sensor_point_from_robot is not None:
-        # Round to 4 decimal places
-        rounded_sensor_point = np.round(sensor_point_from_robot, 4)
-        rounded_sensor_R_vector = np.round(sensor_R_vector_from_robot, 4)
-        rounded_sensor_quat = np.round(sensor_quat_from_robot, 4)
-        print(f"After transformation (Sensor_from_Robot): coordinates [{rounded_sensor_point[0]:.4f}, {rounded_sensor_point[1]:.4f}, {rounded_sensor_point[2]:.4f}], R_vector [{rounded_sensor_R_vector[0]:.4f}, {rounded_sensor_R_vector[1]:.4f}, {rounded_sensor_R_vector[2]:.4f}], quaternion [{rounded_sensor_quat[0]:.4f}, {rounded_sensor_quat[1]:.4f}, {rounded_sensor_quat[2]:.4f}, {rounded_sensor_quat[3]:.4f}]")
-    else:
-        print("Transformation failed: No transformation matrix found for specified coordinates")
+    # if sensor_point_from_robot is not None:
+    #     # Round to 4 decimal places
+    #     rounded_sensor_point = np.round(sensor_point_from_robot, 4)
+    #     rounded_sensor_R_vector = np.round(sensor_R_vector_from_robot, 4)
+    #     rounded_sensor_quat = np.round(sensor_quat_from_robot, 4)
+    #     print(f"After transformation (Sensor_from_Robot): coordinates [{rounded_sensor_point[0]:.4f}, {rounded_sensor_point[1]:.4f}, {rounded_sensor_point[2]:.4f}], R_vector [{rounded_sensor_R_vector[0]:.4f}, {rounded_sensor_R_vector[1]:.4f}, {rounded_sensor_R_vector[2]:.4f}], quaternion [{rounded_sensor_quat[0]:.4f}, {rounded_sensor_quat[1]:.4f}, {rounded_sensor_quat[2]:.4f}, {rounded_sensor_quat[3]:.4f}]")
+    # else:
+    #     print("Transformation failed: No transformation matrix found for specified coordinates")
 
-    if arm_R_vector_from_robot is not None:
-        # Round to 4 decimal places
-        rounded_arm_R_vector = np.round(arm_R_vector_from_robot, 4)
-        rounded_arm_quat = np.round(arm_quat_from_robot, 4)
-        print(f"After transformation (Arm_from_Robot): R_vector [{rounded_arm_R_vector[0]:.4f}, {rounded_arm_R_vector[1]:.4f}, {rounded_arm_R_vector[2]:.4f}], quaternion [{rounded_arm_quat[0]:.4f}, {rounded_arm_quat[1]:.4f}, {rounded_arm_quat[2]:.4f}, {rounded_arm_quat[3]:.4f}]")
+    # if arm_R_vector_from_robot is not None:
+    #     # Round to 4 decimal places
+    #     rounded_arm_R_vector = np.round(arm_R_vector_from_robot, 4)
+    #     rounded_arm_quat = np.round(arm_quat_from_robot, 4)
+    #     print(f"After transformation (Arm_from_Robot): R_vector [{rounded_arm_R_vector[0]:.4f}, {rounded_arm_R_vector[1]:.4f}, {rounded_arm_R_vector[2]:.4f}], quaternion [{rounded_arm_quat[0]:.4f}, {rounded_arm_quat[1]:.4f}, {rounded_arm_quat[2]:.4f}, {rounded_arm_quat[3]:.4f}]")
 
     return sensor_point_from_robot, sensor_R_vector_from_robot, sensor_quat_from_robot, arm_R_vector_from_robot, arm_quat_from_robot
 
@@ -246,67 +229,3 @@ def print_transformation_results(R_aurora_to_robot_matrices, T_aurora_to_robot_v
         print(f"  R_vector: [{R_vector[0]:8.5f}, {R_vector[1]:8.5f}, {R_vector[2]:8.5f}]")
     else:
         print("  Array is empty or None")
-
-
-# =============================================================================
-# Additional utility functions
-# =============================================================================
-
-def transformation_error(P1, P2, R_matrix, t_vector):
-    """
-    Calculate transformation error for given transformation parameters.
-    
-    Args:
-        P1 (np.ndarray): Source points (N x 3)
-        P2 (np.ndarray): Target points (N x 3)
-        R_matrix (np.ndarray): 3x3 rotation matrix
-        t_vector (np.ndarray): 3x1 translation vector
-        
-    Returns:
-        tuple: (mean_error, max_error, rmse)
-    """
-    # Apply transformation: P1_predicted = R * P2 + t
-    P1_transformed = (R_matrix @ P2.T).T + t_vector
-    
-    # Calculate errors
-    errors = np.linalg.norm(P1 - P1_transformed, axis=1)
-    
-    mean_error = np.mean(errors)
-    max_error = np.max(errors)
-    rmse = np.sqrt(np.mean(errors**2))
-    
-    return mean_error, max_error, rmse
-
-
-def validate_transformation(P1, P2, R_matrix, t_vector, threshold=1.0):
-    """
-    Validate transformation quality.
-    
-    Args:
-        P1 (np.ndarray): Target points (N x 3)
-        P2 (np.ndarray): Source points (N x 3)
-        R_matrix (np.ndarray): 3x3 rotation matrix
-        t_vector (np.ndarray): 3x1 translation vector
-        threshold (float): Maximum acceptable error
-        
-    Returns:
-        dict: Validation results
-    """
-    mean_err, max_err, rmse = transformation_error(P1, P2, R_matrix, t_vector)
-    
-    # Check if rotation matrix is valid
-    is_orthogonal = np.allclose(R_matrix @ R_matrix.T, np.eye(3), rtol=1e-6)
-    det_is_one = np.allclose(np.linalg.det(R_matrix), 1.0, rtol=1e-6)
-    
-    validation_results = {
-        'mean_error': mean_err,
-        'max_error': max_err,
-        'rmse': rmse,
-        'is_orthogonal': is_orthogonal,
-        'determinant_is_one': det_is_one,
-        'is_valid_rotation': is_orthogonal and det_is_one,
-        'error_within_threshold': mean_err <= threshold,
-        'overall_valid': is_orthogonal and det_is_one and mean_err <= threshold
-    }
-    
-    return validation_results

@@ -192,10 +192,11 @@ class AdaptiveTransform:
         R_matrix_before = rotation_before.as_matrix()
         
         # For fixed-axis rotation (apply coordinate system B rotation first)
-        R_matrix_after = R_matrix_A2B @ R_matrix_before
+        # R_matrix_after = R_matrix_A2B @ R_matrix_before
+        rotation_after = R.from_matrix(R_matrix_A2B) * rotation_before
 
         # Express transformed orientation as Rotation vector and quaternion
-        rotation_after = R.from_matrix(R_matrix_after)
+        # rotation_after = R.from_matrix(R_matrix_after)
         R_vector = rotation_after.as_rotvec(degrees=True)
         quaternion_after = rotation_after.as_quat()
         print("Transformed Rotation Vector:", R_vector)
@@ -340,33 +341,3 @@ class AdaptiveTransform:
                 R_matrices_sen2arm.append(None)
         
         return R_matrices_sen2arm 
-
-    @staticmethod
-    def rotation_error(quaternion, R_matrices_arm, R_matrices_sensor):
-        """
-        Calculate transformation error by quaternion.
-        
-        Args:
-            quaternion (array-like): Quaternion to optimize [x, y, z, w]
-            R_matrices_arm (list): List of arm orientation rotation matrices from robot coordinate system
-            R_matrices_sensor (list): List of sensor orientation rotation matrices from robot coordinate system
-        
-        Returns:
-            np.ndarray: Flattened error between each pair of rotation matrices
-        """
-        # Normalize quaternion
-        quat_normalized = quaternion / np.linalg.norm(quaternion)
-        # Create rotation matrix from quaternion
-        R_matrix_sen2arm = R.from_quat(quat_normalized).as_matrix()
-        
-        # Calculate error between each pair of rotation matrices
-        errors = []
-        for R_matrix_arm, R_matrix_sensor in zip(R_matrices_arm, R_matrices_sensor):
-            R_matrix_arm_predicted = R_matrix_sen2arm @ R_matrix_sensor
-            
-            # Calculate rotation matrix difference
-            R_diff = R_matrix_arm.T @ R_matrix_arm_predicted
-            angle_error = np.arccos(np.clip((np.trace(R_diff) - 1.0) / 2.0, -1.0, 1.0))
-            errors.append(angle_error)
-            
-        return np.array(errors)

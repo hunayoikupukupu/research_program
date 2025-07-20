@@ -12,8 +12,6 @@ from .utils import (
     print_transformation_results,
     find_transformation,
     estimate_transform_matrix,
-    transformation_error,
-    validate_transformation,
 )
 from .main import main
 
@@ -30,8 +28,6 @@ __all__ = [
     'print_transformation_results',
     'find_transformation',
     'estimate_transform_matrix',
-    'transformation_error',
-    'validate_transformation',
     'main'
 ]
 
