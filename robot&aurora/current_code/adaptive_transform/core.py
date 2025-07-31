@@ -188,6 +188,9 @@ class AdaptiveTransform:
         point_after = R_matrix_A2B @ point_before + translation_vector_A2B
         
         # Orientation transformation
+        if quaternion_before[3] < 0:
+            # Ensure quaternion is in canonical form (w >= 0)
+            quaternion_before = -quaternion_before
         rotation_before = R.from_quat(quaternion_before)
         R_matrix_before = rotation_before.as_matrix()
         
@@ -199,6 +202,9 @@ class AdaptiveTransform:
         # rotation_after = R.from_matrix(R_matrix_after)
         R_vector = rotation_after.as_rotvec(degrees=True)
         quaternion_after = rotation_after.as_quat()
+        if quaternion_after[3] < 0:
+            # Ensure quaternion is in canonical form (w >= 0)
+            quaternion_after = -quaternion_after
         print("Transformed Rotation Vector:", R_vector)
         print("Transformed Quaternion:", quaternion_after)
 

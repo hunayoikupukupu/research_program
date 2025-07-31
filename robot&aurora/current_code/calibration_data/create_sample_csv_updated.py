@@ -227,7 +227,7 @@ if __name__ == "__main__":
     # パラメータを一か所で設定
     rotation_euler_deg_aur2rob = [30,   120,  -45]  # Aurora座標系からロボット座標系へのオイラー角（度）[roll, pitch, yaw]
     translation_vector_aur2rob = [0,0,0]  # Aurora座標系からロボット座標系への並進ベクトル（mm）[tx, ty, tz]
-    robot_arm_R_vector_deg = [-64.52, 0, 168.04]  # ロボットアームの回転ベクトル（度）[rx, ry, rz]
+    robot_arm_R_vector_deg = [30, 60, 90]  # ロボットアームの回転ベクトル（度）[rx, ry, rz]
     rotation_euler_deg_sen2arm = [  -60,   -80,  150]  # センサー座標系からアーム座標系へのオイラー角（度）[roll, pitch, yaw]
     add_noise = 0  # 位置ノイズの標準偏差（mm）
     add_quaternion_noise = 0  # クォータニオンノイズの標準偏差
