@@ -7,7 +7,6 @@ from scipy.spatial.transform import Rotation as R
 
 try:
     # Auroraトラッカーのライブラリをインポート
-    from sksurgerynditracker.nditracker import NDITracker
     from utils.pose_formatter import generateRobotArm, generateRobotArmAxisAngle, generateProbe
     from utils.initialization import initialize_robot, initialize_aurora
 except ImportError as e:
