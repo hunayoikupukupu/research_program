@@ -1,35 +1,11 @@
 import time
 import numpy as np
 import csv
-from xarm.wrapper import XArmAPI
-from sksurgerynditracker.nditracker import NDITracker
-from utils.pose_formatter import generateRobotArm, generateProbe
+from utils.pose_formatter import generateRobotArmAxisAngle, generateProbe
+from utils.initialization import initialize_robot, initialize_aurora
 
-def initialize_robot(ip='192.168.1.155'):
-    """ロボットアームの初期化"""
-    arm = XArmAPI(ip)
-    arm.connect()
-    arm.clean_warn()
-    arm.clean_error()
-    arm.motion_enable(enable=True)
-    arm.set_mode(0)
-    arm.set_state(state=0)
-    return arm
 
-def initialize_aurora(port='COM3'):
-    """オーロラトラッカーの初期化"""
-    aurora = NDITracker(
-        {
-            "tracker type": "aurora",
-            "serial port": port,
-            "use quaternions": True,
-        }
-    )
-    aurora.start_tracking()
-    time.sleep(3)  # トラッキング開始を待つ
-    return aurora
-
-def collect_data(arm, aurora, x_range, y_range, z_range, roll, pitch, yaw, N):
+def collect_data(arm, aurora, x_range, y_range, z_range, N):
     """指定された範囲でデータを収集"""
     x_start, x_end = x_range
     y_start, y_end = y_range
@@ -44,7 +20,7 @@ def collect_data(arm, aurora, x_range, y_range, z_range, roll, pitch, yaw, N):
     # データ格納用ディクショナリ
     robot_data = {
         'x': [], 'y': [], 'z': [], 
-        'roll': [], 'pitch': [], 'yaw': []
+        'rx': [], 'ry': [], 'rz': []
     }
     
     aurora_data = {
@@ -72,31 +48,22 @@ def collect_data(arm, aurora, x_range, y_range, z_range, roll, pitch, yaw, N):
             progress = (point / total_points) * 100
             print(f"進捗: {progress:.1f}% ({point}/{total_points})")
         
-        base_roll = 0
-        base_pitch = 0
-        base_yaw = 180
-
-        diff_roll = base_roll - roll
-        diff_pitch = base_pitch - pitch
-        diff_yaw = base_yaw - yaw
-
         # ロボットアームを移動
         arm.set_position(x=current_x, y=current_y, z=current_z, speed=50, wait=True)
-        arm.set_position(roll=diff_roll, pitch=diff_pitch, yaw=diff_yaw, relative=True, speed=50, wait=True)
         time.sleep(2)
         
         # データ取得
-        robot = generateRobotArm(arm.get_position())
+        robot = generateRobotArmAxisAngle(arm.get_position_aa())
         probes = generateProbe(aurora.get_frame())
         
         # ロボットデータを保存
         robot_data['x'].append(robot.pos.x)
         robot_data['y'].append(robot.pos.y)
         robot_data['z'].append(robot.pos.z)
-        robot_data['roll'].append(robot.rot.roll)
-        robot_data['pitch'].append(robot.rot.pitch)
-        robot_data['yaw'].append(robot.rot.yaw)
-        
+        robot_data['rx'].append(robot.rot.rx)
+        robot_data['ry'].append(robot.rot.ry)
+        robot_data['rz'].append(robot.rot.rz)
+
         # オーロラデータを保存
         aurora_data['x'].append(probes[0].pos.x)
         aurora_data['y'].append(probes[0].pos.y)
@@ -106,15 +73,6 @@ def collect_data(arm, aurora, x_range, y_range, z_range, roll, pitch, yaw, N):
         aurora_data['quat_z'].append(probes[0].quat.z)
         aurora_data['quat_w'].append(probes[0].quat.w)
         aurora_data['quality'].append(probes[0].quality)
-
-        arm.set_position(roll=-diff_roll, pitch=-diff_pitch, yaw=-diff_yaw, relative=True, speed=50, wait=True)
- 
-        # ロボットアームの位置を調整
-        robot_adjust = generateRobotArm(arm.get_position())
-        adjust_roll = robot_adjust.rot.roll - base_roll
-        adjust_pitch = robot_adjust.rot.pitch - base_pitch
-        adjust_yaw = robot_adjust.rot.yaw - base_yaw
-        arm.set_position(roll=adjust_roll, pitch=adjust_pitch, yaw=adjust_yaw, relative=True, speed=50, wait=True)
 
         time.sleep(1)
     
@@ -135,10 +93,10 @@ def save_to_csv_extended(robot_data, aurora_data, filename, decimal_places=3):
             np.round(robot_data['z'][i], decimal_places),
             
             # ロボットのオイラー角データ
-            np.round(robot_data['roll'][i], decimal_places),
-            np.round(robot_data['pitch'][i], decimal_places),
-            np.round(robot_data['yaw'][i], decimal_places),
-            
+            np.round(robot_data['rx'][i], decimal_places),
+            np.round(robot_data['ry'][i], decimal_places),
+            np.round(robot_data['rz'][i], decimal_places),
+
             # オーロラの位置データ
             np.round(aurora_data['x'][i], decimal_places),
             np.round(aurora_data['y'][i], decimal_places),
@@ -161,7 +119,7 @@ def save_to_csv_extended(robot_data, aurora_data, filename, decimal_places=3):
         # ヘッダー行
         header = [
             "robot_x", "robot_y", "robot_z",
-            "robot_roll", "robot_pitch", "robot_yaw",
+            "robot_rx", "robot_ry", "robot_rz",
             "aurora_x", "aurora_y", "aurora_z",
             "aurora_quat_x", "aurora_quat_y", "aurora_quat_z", "aurora_quat_w",
             "aurora_quality"
@@ -178,7 +136,7 @@ def cleanup(arm, aurora):
     arm.disconnect()
     print("デバイスの接続を終了しました")
 
-def main(x_range, y_range, z_range, N, roll, pitch, yaw, output_file, robot_ip, aurora_port):
+def main(x_range, y_range, z_range, N, output_file):
     """
     メイン関数：データ収集からCSV保存までの全体の流れを制御
     
@@ -188,16 +146,12 @@ def main(x_range, y_range, z_range, N, roll, pitch, yaw, output_file, robot_ip, 
         z_range (tuple): Z座標の範囲 (開始値, 終了値)
         N (int): 各次元のサンプル数（N+1ポイント取得）
         output_file (str): 出力ファイルのパス
-        robot_ip (str): ロボットアームのIPアドレス
-        aurora_port (str): オーロラトラッカーのCOMポート
     """
     try:
         # 初期化
-        print("ロボットアームを初期化しています...")
-        arm = initialize_robot(robot_ip)
+        arm = initialize_robot()
         
-        print("オーロラトラッカーを初期化しています...")
-        aurora = initialize_aurora(aurora_port)
+        aurora = initialize_aurora()
         
         # データ収集
         print(f"設定情報:")
@@ -207,7 +161,7 @@ def main(x_range, y_range, z_range, N, roll, pitch, yaw, output_file, robot_ip, 
         print(f"  サンプル数: {N} (各辺 {N+1} ポイント)")
         print(f"  合計測定ポイント: {(N+1)**3}")
 
-        robot_data, aurora_data = collect_data(arm, aurora, x_range, y_range, z_range, roll, pitch, yaw, N)
+        robot_data, aurora_data = collect_data(arm, aurora, x_range, y_range, z_range, N)
 
         # CSV保存
         save_to_csv_extended(robot_data, aurora_data, output_file)
@@ -230,12 +184,7 @@ if __name__ == "__main__":
         x_range=(100, 150),                    # X座標の範囲 (開始値, 終了値)
         y_range=(-25, 25),                     # Y座標の範囲 (開始値, 終了値)
         z_range=(-275, -325),                     # Z座標の範囲 (開始値, 終了値)
-        roll=0,                            # ロール角（度）
-        pitch=-20,                          # ピッチ角（度）
-        yaw=180,                             # ヨー角（度）
         N=1,                                   # サンプル数（各辺N+1ポイント）
         output_file="robot&aurora/current_code/calibration_data/aurora_robot_pose_log_0708_pitch-.csv",
-        robot_ip="192.168.1.155",
-        aurora_port="COM3"
     )
     
