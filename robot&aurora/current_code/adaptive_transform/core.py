@@ -205,8 +205,6 @@ class AdaptiveTransform:
         if quaternion_after[3] < 0:
             # Ensure quaternion is in canonical form (w >= 0)
             quaternion_after = -quaternion_after
-        print("Transformed Rotation Vector:", R_vector)
-        print("Transformed Quaternion:", quaternion_after)
 
         return point_after, R_vector, quaternion_after
 
