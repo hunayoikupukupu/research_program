@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import time
 import adaptive_transform
+from scipy.spatial.transform import Rotation as R
 
 try:
     # Auroraトラッカーのライブラリをインポート
@@ -13,8 +14,8 @@ except ImportError as e:
     sys.exit(1)
 
 def record_relative_position(aurora):
-    """相対位置を記録する関数"""
-    print("相対位置を記録中...")
+    """相対位置・姿勢を記録する関数"""
+    print("相対位置・姿勢を記録中...")
     
     # upper_probeとlower_probeのAurora座標を取得
     probes = generateProbe(aurora.get_frame())
@@ -22,7 +23,7 @@ def record_relative_position(aurora):
     lower_probe = probes[0]
 
     # upper_probeから見たlower_probeの相対位置を計算
-    relative_pos = np.array([
+    up2low_pos = np.array([
         lower_probe.pos.x - upper_probe.pos.x,
         lower_probe.pos.y - upper_probe.pos.y,
         lower_probe.pos.z - upper_probe.pos.z
@@ -30,16 +31,29 @@ def record_relative_position(aurora):
     
     # lower_probeのクォータニオンを記録
     lower_probe_quat = np.array([
-        lower_probe.quat.w,
         lower_probe.quat.x,
         lower_probe.quat.y,
-        lower_probe.quat.z
+        lower_probe.quat.z,
+        lower_probe.quat.w
     ])
-    
-    print("相対位置の記録が完了しました。")
-    return relative_pos, lower_probe_quat
 
-def move_robot_to_goal(arm, aurora, relative_pos, lower_probe_quat):
+    # upper_probeのクォータニオンを記録
+    upper_probe_quat = np.array([
+        upper_probe.quat.x,
+        upper_probe.quat.y,
+        upper_probe.quat.z,
+        upper_probe.quat.w
+    ])
+
+    upper_R_matrix = R.from_quat(upper_probe_quat).as_matrix()
+    lower_R_matrix = R.from_quat(lower_probe_quat).as_matrix()
+    up2low_R_matrix = lower_R_matrix @ upper_R_matrix.T
+
+
+    print("相対位置・相対姿勢の記録が完了しました。")
+    return up2low_pos, up2low_R_matrix
+
+def move_robot_to_goal(arm, aurora, up2low_pos, up2low_R_matrix):
     """ロボットをゴール位置に移動する関数"""
     print("ゴール位置を計算中...")
     
@@ -49,20 +63,31 @@ def move_robot_to_goal(arm, aurora, relative_pos, lower_probe_quat):
 
     # lower_probeのゴール位置を計算
     lower_probe_goal_pos_aurora = np.array([
-        upper_probe.pos.x + relative_pos[0],
-        upper_probe.pos.y + relative_pos[1],
-        upper_probe.pos.z + relative_pos[2]
+        upper_probe.pos.x + up2low_pos[0],
+        upper_probe.pos.y + up2low_pos[1],
+        upper_probe.pos.z + up2low_pos[2]
     ])
 
+    # lower_probeのゴール姿勢を計算
+    upper_probe_quat = np.array([
+        upper_probe.quat.x,
+        upper_probe.quat.y,
+        upper_probe.quat.z,
+        upper_probe.quat.w
+    ])
+    upper_R_matrix = R.from_quat(upper_probe_quat).as_matrix()
+    lower_R_matrix = up2low_R_matrix @ upper_R_matrix
+    lower_probe_goal_quat_aurora = R.from_matrix(lower_R_matrix).as_quat()
+
     # adaptive_transformで座標変換
-    sensor_point_from_robot, sensor_euler_from_robot, sensor_quat_from_robot, arm_euler_from_robot, arm_quat_from_robot = adaptive_transform.main(
+    sensor_point_from_robot, sensor_R_vector_from_robot, sensor_quat_from_robot, arm_R_vector_from_robot, arm_quat_from_robot = adaptive_transform.main(
         x_range=(50, 200),
         y_range=(-75, 75),
-        z_range=(-400, -250),
+        z_range=(-350, -200),
         divisions=1,
-        data_file='robot&aurora/current_code/calibration_data/aurora_robot_pose_log_6_6_6.csv',
+        data_file='robot&aurora/current_code/calibration_data/aurora_robot_pose_log_20251009.csv',
         input_point=lower_probe_goal_pos_aurora,
-        input_quaternion=lower_probe_quat
+        input_quaternion=lower_probe_goal_quat_aurora
     )
 
     lower_probe_goal_pos_robot = sensor_point_from_robot
@@ -78,7 +103,11 @@ def move_robot_to_goal(arm, aurora, relative_pos, lower_probe_quat):
     
     print("ロボットアームをx方向に移動中...")
     arm.set_position(x=lower_probe_goal_pos_robot[0], wait=True, speed=50)
-    
+
+    angle_pose = [lower_probe_goal_pos_robot[0], lower_probe_goal_pos_robot[1], lower_probe_goal_pos_robot[2], arm_R_vector_from_robot[0], arm_R_vector_from_robot[1], arm_R_vector_from_robot[2]]
+    print("ロボットアームの姿勢を調整中...")
+    arm.set_position_aa(axis_angle_pose=angle_pose, wait=True, speed=20)
+
     print("ロボットアームの移動が完了しました。")
 
 def main():
@@ -101,7 +130,7 @@ def main():
         print("=" * 50)
         
         # 初回のみ相対位置を記録
-        print("\n--- 初期設定: 相対位置の記録 ---")
+        print("\n--- 初期設定: 相対位置・姿勢の記録 ---")
         relative_pos, lower_probe_quat = record_relative_position(aurora)
         print("相対位置が記録されました。この位置関係を維持してロボット制御を行います。")
         

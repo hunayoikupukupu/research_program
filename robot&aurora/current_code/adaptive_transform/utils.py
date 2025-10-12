@@ -155,15 +155,6 @@ def transform_pose(input_point, input_quaternion, R_aurora_to_robot_matrices, T_
         T_aurora_to_robot_vectors,
         R_sensor_to_arm_matrices
     )
-
-    # print("Transformation results:")
-    # print(f"Input coordinates: {input_point}")
-    # print(f"Input quaternion: {input_quaternion}")
-    # print(f"Transformed coordinates (Sensor_from_Robot): {sensor_point_from_robot}")
-    # print(f"Transformed R_vector (Sensor_from_Robot): {sensor_R_vector_from_robot}")
-    # print(f"Transformed quaternion (Sensor_from_Robot): {sensor_quat_from_robot}")
-    # print(f"Transformed R_vector (Arm_from_Robot): {arm_R_vector_from_robot}")
-    # print(f"Transformed quaternion (Arm_from_Robot): {arm_quat_from_robot}")
     
     # Display transformation results
     print(f"Before transformation (Sensor_from_Aurora): coordinates [{input_point[0]}, {input_point[1]}, {input_point[2]}], quaternion [{input_quaternion[0]}, {input_quaternion[1]}, {input_quaternion[2]}, {input_quaternion[3]}]")
@@ -181,7 +172,8 @@ def transform_pose(input_point, input_quaternion, R_aurora_to_robot_matrices, T_
         # Round to 4 decimal places
         rounded_arm_R_vector = np.round(arm_R_vector_from_robot, 4)
         rounded_arm_quat = np.round(arm_quat_from_robot, 4)
-        print(f"After transformation (Arm_from_Robot): R_vector [{rounded_arm_R_vector[0]:.4f}, {rounded_arm_R_vector[1]:.4f}, {rounded_arm_R_vector[2]:.4f}], quaternion [{rounded_arm_quat[0]:.4f}, {rounded_arm_quat[1]:.4f}, {rounded_arm_quat[2]:.4f}, {rounded_arm_quat[3]:.4f}]")
+        rounded_arm_euler = R.from_quat(rounded_arm_quat).as_euler('XYZ', degrees=True)
+        print(f"After transformation (Arm_from_Robot): coordinates [{rounded_sensor_point[0]:.4f}, {rounded_sensor_point[1]:.4f}, {rounded_sensor_point[2]:.4f}], R_vector [{rounded_arm_R_vector[0]:.4f}, {rounded_arm_R_vector[1]:.4f}, {rounded_arm_R_vector[2]:.4f}], euler [{rounded_arm_euler[0]:.4f}, {rounded_arm_euler[1]:.4f}, {rounded_arm_euler[2]:.4f}]")
 
     return sensor_point_from_robot, sensor_R_vector_from_robot, sensor_quat_from_robot, arm_R_vector_from_robot, arm_quat_from_robot
 

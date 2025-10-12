@@ -92,16 +92,13 @@ def main():
                 # データ表示
                 print(f"[{timestamp}]")
                 print(f"Aurora位置: X={pos_x:.2f}, Y={pos_y:.2f}, Z={pos_z:.2f}")
-                print(f"クォータニオン: W={quat_w:.4f}, X={quat_x:.4f}, Y={quat_y:.4f}, Z={quat_z:.4f}")
+                print(f"クォータニオン: X={quat_x:.4f}, Y={quat_y:.4f}, Z={quat_z:.4f}, W={quat_w:.4f}")
                 print(f"オイラー角 (zyx): {euler_str}")
                 print(f"クオリティ: {quality:.2f}")
                 print(f"ロボットアーム位置: X={robot_pos_x:.2f}, Y={robot_pos_y:.2f}, Z={robot_pos_z:.2f}")
                 print(f"ロボットアーム姿勢 (オイラー角): Roll={robot_roll:.2f}°, Pitch={robot_pitch:.2f}°, Yaw={robot_yaw:.2f}°")
                 print(f"ロボットアーム姿勢 (AxisAngle): RX={robot_rx:.2f}, RY={robot_ry:.2f}, RZ={robot_rz:.2f}")
-                print(f"ロボットアームクォータニオン: W={robot_quat_w:.4f}, X={robot_quat_x:.4f}, Y={robot_quat_y:.4f}, Z={robot_quat_z:.4f}")
                 print("-" * 50)
-
-
                 
                 # 1秒待機
                 time.sleep(1)

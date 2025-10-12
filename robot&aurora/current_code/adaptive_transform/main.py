@@ -23,8 +23,7 @@ def main(x_range, y_range, z_range, divisions, data_file, input_point=None, inpu
         input_quaternion (list, optional): Pose quaternion to transform [x, y, z, w] (default: None)
         
     Returns:
-        tuple or None: Transformation result tuple (transformed coordinates, transformed Euler angles, transformed quaternion) or None
-    """
+        tuple or None: Transformation result tuple (transformed coordinates, transformed rotation vector, transformed quaternion) or None    """
     # Build transformation model
     R_aurora_to_robot_matrices, T_aurora_to_robot_vectors, transformer = build_coordinate_transformation_model(
         x_range, y_range, z_range, divisions, data_file
