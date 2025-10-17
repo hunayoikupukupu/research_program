@@ -126,13 +126,14 @@ def generate_synthetic_data(
                     round(x, 5), round(y, 5), round(z, 5),
                     round(robot_arm_R_vector_deg[0], 5), round(robot_arm_R_vector_deg[1], 5), round(robot_arm_R_vector_deg[2], 5),
                     round(aurora_point[0], 5), round(aurora_point[1], 5), round(aurora_point[2], 5),
-                    round(noisy_quaternion[0], 5), round(noisy_quaternion[1], 5), round(noisy_quaternion[2], 5), round(noisy_quaternion[3], 5)
+                    round(noisy_quaternion[0], 5), round(noisy_quaternion[1], 5), round(noisy_quaternion[2], 5), round(noisy_quaternion[3], 5),
+                    0.1
                 ])
     
     # CSVファイルに書き込み
     with open(output_file, 'w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['robot_x', 'robot_y', 'robot_z', 'robot_rx', 'robot_ry', 'robot_rz', 'aurora_x', 'aurora_y', 'aurora_z', 'aurora_quat_x', 'aurora_quat_y', 'aurora_quat_z', 'aurora_quat_w'])
+        writer.writerow(['robot_x', 'robot_y', 'robot_z', 'robot_rx', 'robot_ry', 'robot_rz', 'aurora_x', 'aurora_y', 'aurora_z', 'aurora_quat_x', 'aurora_quat_y', 'aurora_quat_z', 'aurora_quat_w', 'aurora_quality'])
         writer.writerows(data_points)
     
     print(f"生成したデータポイント数: {len(data_points)}")

@@ -13,47 +13,41 @@ except ImportError as e:
     print("utils.probe モジュールと sksurgerynditracker がインストールされていることを確認してください。")
     sys.exit(1)
 
-def record_relative_position(aurora):
-    """相対位置・姿勢を記録する関数"""
-    print("相対位置・姿勢を記録中...")
+def pose_to_matrix(pos, quat):
+    """位置ベクトルとクォータニオンから4x4同次変換行列を作成する関数"""
+    matrix = np.eye(4)
+    matrix[:3, :3] = R.from_quat(quat).as_matrix()
+    matrix[:3, 3] = pos
+    return matrix
+
+def record_relative_transform(aurora):
+    """2つのプローブ間の相対的な剛体変換行列を記録する関数"""
+    print("相対的な変換行列を記録中...")
     
     # upper_probeとlower_probeのAurora座標を取得
     probes = generateProbe(aurora.get_frame())
     upper_probe = probes[1]
     lower_probe = probes[0]
 
-    # upper_probeから見たlower_probeの相対位置を計算
-    up2low_pos = np.array([
-        lower_probe.pos.x - upper_probe.pos.x,
-        lower_probe.pos.y - upper_probe.pos.y,
-        lower_probe.pos.z - upper_probe.pos.z
-    ])
+    # 各プローブの位置と姿勢を抽出
+    upper_pos = np.array([upper_probe.pos.x, upper_probe.pos.y, upper_probe.pos.z])
+    upper_quat = np.array([upper_probe.quat.x, upper_probe.quat.y, upper_probe.quat.z, upper_probe.quat.w])
     
-    # lower_probeのクォータニオンを記録
-    lower_probe_quat = np.array([
-        lower_probe.quat.x,
-        lower_probe.quat.y,
-        lower_probe.quat.z,
-        lower_probe.quat.w
-    ])
+    lower_pos = np.array([lower_probe.pos.x, lower_probe.pos.y, lower_probe.pos.z])
+    lower_quat = np.array([lower_probe.quat.x, lower_probe.quat.y, lower_probe.quat.z, lower_probe.quat.w])
 
-    # upper_probeのクォータニオンを記録
-    upper_probe_quat = np.array([
-        upper_probe.quat.x,
-        upper_probe.quat.y,
-        upper_probe.quat.z,
-        upper_probe.quat.w
-    ])
+    # ワールド座標系（Aurora）から各プローブへの変換行列を計算
+    T_world_upper = pose_to_matrix(upper_pos, upper_quat)
+    T_world_lower = pose_to_matrix(lower_pos, lower_quat)
+    
+    # upperプローブから見たlowerプローブの相対変換行列を計算
+    # T_upper_to_lower = inv(T_world_to_upper) @ T_world_to_lower
+    T_upper_lower = np.linalg.inv(T_world_upper) @ T_world_lower
 
-    upper_R_matrix = R.from_quat(upper_probe_quat).as_matrix()
-    lower_R_matrix = R.from_quat(lower_probe_quat).as_matrix()
-    up2low_R_matrix = lower_R_matrix @ upper_R_matrix.T
+    print("相対的な変換行列の記録が完了しました。")
+    return T_upper_lower
 
-
-    print("相対位置・相対姿勢の記録が完了しました。")
-    return up2low_pos, up2low_R_matrix
-
-def move_robot_to_goal(arm, aurora, up2low_pos, up2low_R_matrix):
+def move_robot_to_goal(arm, aurora, T_upper_lower):
     """ロボットをゴール位置に移動する関数"""
     print("ゴール位置を計算中...")
     
@@ -61,23 +55,19 @@ def move_robot_to_goal(arm, aurora, up2low_pos, up2low_R_matrix):
     probes = generateProbe(aurora.get_frame())
     upper_probe = probes[1]
 
-    # lower_probeのゴール位置を計算
-    lower_probe_goal_pos_aurora = np.array([
-        upper_probe.pos.x + up2low_pos[0],
-        upper_probe.pos.y + up2low_pos[1],
-        upper_probe.pos.z + up2low_pos[2]
-    ])
+    # 現在のupper_probeの位置と姿勢から、ワールド座標系での変換行列を計算
+    current_upper_pos = np.array([upper_probe.pos.x, upper_probe.pos.y, upper_probe.pos.z])
+    current_upper_quat = np.array([upper_probe.quat.x, upper_probe.quat.y, upper_probe.quat.z, upper_probe.quat.w])
+    T_world_upper_current = pose_to_matrix(current_upper_pos, current_upper_quat)
 
-    # lower_probeのゴール姿勢を計算
-    upper_probe_quat = np.array([
-        upper_probe.quat.x,
-        upper_probe.quat.y,
-        upper_probe.quat.z,
-        upper_probe.quat.w
-    ])
-    upper_R_matrix = R.from_quat(upper_probe_quat).as_matrix()
-    lower_R_matrix = up2low_R_matrix @ upper_R_matrix
-    lower_probe_goal_quat_aurora = R.from_matrix(lower_R_matrix).as_quat()
+    # lower_probeのゴールとなる変換行列を計算
+    # T_world_to_lower_goal = T_world_to_upper_current @ T_upper_to_lower
+    T_world_lower_goal = T_world_upper_current @ T_upper_lower
+
+    # ゴール変換行列から位置とクォータニオンを抽出
+    lower_probe_goal_pos_aurora = T_world_lower_goal[:3, 3]
+    lower_probe_goal_rot_matrix = T_world_lower_goal[:3, :3]
+    lower_probe_goal_quat_aurora = R.from_matrix(lower_probe_goal_rot_matrix).as_quat()
 
     # adaptive_transformで座標変換
     sensor_point_from_robot, sensor_R_vector_from_robot, sensor_quat_from_robot, arm_R_vector_from_robot, arm_quat_from_robot = adaptive_transform.main(
@@ -123,16 +113,17 @@ def main():
     try:
         # ロボットアームを初期化
         arm = initialize_robot()
+
         # オーロラトラッカーを初期化
         aurora = initialize_aurora(port=port)
 
         print("トラッキング開始しました")
         print("=" * 50)
         
-        # 初回のみ相対位置を記録
-        print("\n--- 初期設定: 相対位置・姿勢の記録 ---")
-        relative_pos, lower_probe_quat = record_relative_position(aurora)
-        print("相対位置が記録されました。この位置関係を維持してロボット制御を行います。")
+        # 初回のみ相対変換行列を記録
+        print("\n--- 初期設定: 相対的な変換行列の記録 ---")
+        relative_transform = record_relative_transform(aurora)
+        print("相対的な変換行列が記録されました。この関係を維持してロボット制御を行います。")
         
         cycle_count = 1
         
@@ -145,8 +136,8 @@ def main():
                 print("(終了する場合は Ctrl+C を押してください)")
                 input(">>> Enterキーを押してください: ")
                 
-                # ステップ2: ロボットをゴール位置に移動（記録済みの相対位置を使用）
-                move_robot_to_goal(arm, aurora, relative_pos, lower_probe_quat)
+                # ステップ2: ロボットをゴール位置に移動（記録済みの相対変換行列を使用）
+                move_robot_to_goal(arm, aurora, relative_transform)
                 
                 print(f"\nサイクル {cycle_count} が完了しました。")
                 print("次のサイクルを開始します...")
