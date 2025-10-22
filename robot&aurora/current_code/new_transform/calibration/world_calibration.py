@@ -78,6 +78,22 @@ class WorldCalibration:
         ワールドキャリブレーションを実行して T_aurora_from_robot を取得
         戻り値: 4x4の同次変換行列 T_aurora_from_robot
         """
-        aurora_points, robot_points = self.load_data_to_points()
-        T_aurora_from_robot = self.compute_transform(aurora_points, robot_points)
-        return T_aurora_from_robot
+        try:
+            print("1. CSVからデータを読み込み、座標変換を実行しています...")
+            # aurora_points: sensor_from_auroraの点群 (N, 3)
+            # robot_points: arm_from_robotの点群 (N, 3)
+            aurora_points, robot_points = self.load_data_to_points()
+            print(f"   {len(aurora_points)} 点のデータを読み込みました。")
+
+            print("2. T_aurora_from_robot を推定しています...")
+            T_aurora_from_robot = self.compute_transform(aurora_points, robot_points)
+            if T_aurora_from_robot is not None:
+                print("3. 推定が完了しました。")
+            return T_aurora_from_robot
+
+        except FileNotFoundError:
+            print(f"エラー: CSVファイルが見つかりません: {self.csv_path}")
+            return None
+        except Exception as e:
+            print(f"キャリブレーション中に予期せぬエラーが発生しました: {e}")
+            return None

@@ -7,14 +7,12 @@ def main(goal_point, goal_quaternion, world_calib_csv, hand_eye_calib_csv):
     # ワールドキャリブレーションを実行して T_robot_from_aurora を取得
     world_calib = WorldCalibration(world_calib_csv)
     T_robot_from_aurora = world_calib.run()
-    
     print("T_robot_from_aurora:")
     print(T_robot_from_aurora)
 
     # ハンドアイキャリブレーションを実行して T_arm_from_sensor を取得
     hand_eye_calib = HandEyeCalibration(hand_eye_calib_csv, T_robot_from_aurora)
     T_arm_from_sensor = hand_eye_calib.run()
-
     print("T_arm_from_sensor:")
     print(T_arm_from_sensor)
 

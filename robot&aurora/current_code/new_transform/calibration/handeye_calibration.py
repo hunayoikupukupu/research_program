@@ -128,8 +128,8 @@ class HandEyeCalibration:
         """
         try:
             print("1. CSVからデータを読み込み、座標変換を実行しています...")
-            # T_arm_list = T_arm_from_robot のリスト
-            # T_sensor_list = T_sensor_from_robot のリスト
+            # T_arm_from_robot_list = T_arm_from_robot のリスト
+            # T_sensor_from_robot_list = T_sensor_from_robot のリスト
             T_arm_from_robot_list, T_sensor_from_robot_list = self.load_and_prepare_data()
             print(f"   {len(T_arm_from_robot_list)} 点のデータを読み込みました。")
 
