@@ -1,37 +1,93 @@
 # 同次変換、逆行列、SVDなどのユーティリティ関数
 
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
-def find_transformation(aurora_points, robot_points):
+# 同次変換行列を扱うクラス
+class Transform:
+    def __init__(self, R_mat=None, t=None):
+        """R_mat: (3,3) 回転行列, t: (3,) 並進ベクトル"""
+        self.R = R_mat if R_mat is not None else np.eye(3)
+        self.t = t if t is not None else np.zeros(3)
+
+    @classmethod
+    def from_quat(cls, quat, t=None):
+        """クォータニオン + 並進から生成"""
+        R_mat = R.from_quat(quat).as_matrix()
+        return cls(R_mat, t)
+
+    @classmethod
+    def from_euler(cls, euler, t=None, seq="xyz", degrees=True):
+        """オイラー角 + 並進から生成"""
+        R_mat = R.from_euler(seq, euler, degrees=degrees).as_matrix()
+        return cls(R_mat, t)
+
+    @classmethod
+    def from_matrix(cls, T):
+        """4×4同次変換行列から生成"""
+        R_mat = T[:3, :3]
+        t = T[:3, 3]
+        return cls(R_mat, t)
+
+    @property
+    def matrix(self):
+        """4×4の同次変換行列を返す"""
+        T = np.eye(4)
+        T[:3, :3] = self.R
+        T[:3, 3] = self.t
+        return T
+
+    def inv(self):
+        """逆変換を返す"""
+        R_inv = self.R.T
+        t_inv = -R_inv @ self.t
+        return Transform(R_inv, t_inv)
+
+    def __matmul__(self, other):
+        """@演算子で座標変換を合成可能"""
+        if not isinstance(other, Transform):
+            raise TypeError("Transform同士でのみ@演算子を使用できます。")
+        R_new = self.R @ other.R
+        t_new = self.R @ other.t + self.t
+        return Transform(R_new, t_new)
+
+    def __repr__(self):
+        return f"Transform(t={self.t}, R=\n{self.R})"
+
+
+# csvファイルから点群データを作成する関数
+def load_csv_data(file_path):
     """
-    T_robot_from_auroraを求める
-    aurora_points: sensor_from_auroraの点群
-    robot_points: arm_from_robotの点群
-    戻り値: 回転行列R, 平行移動ベクトルt (P1 = R * P2 + t)
+    CSVファイルから点群データを読み込む
+    file_path: CSVファイルのパス
+    戻り値: Transformオブジェクトのリスト (T_arm_from_robot, T_sensor_from_aurora)
     """
-    # 重心の計算（変数名と内容を一致させる）
-    centroid_robot = np.mean(robot_points, axis=0)
-    centroid_aurora = np.mean(aurora_points, axis=0)
 
-    # 重心を基準に座標をシフト
-    robot_points_centered = robot_points - centroid_robot
-    aurora_points_centered = aurora_points - centroid_aurora
+    try:
+        csv_data = np.loadtxt(file_path, skiprows=1, delimiter=',')
+    except Exception as e:
+        print(f"Error loading CSV data: {e}")
+        return None
+    
+    T_arm_from_robot_list = []
+    T_sensor_from_aurora_list = []
 
-    # 共分散行列の計算
-    H = np.dot(robot_points_centered.T, aurora_points_centered)
+    for data in csv_data:
+        robot_x, robot_y, robot_z = data[0], data[1], data[2]
+        robot_rx, robot_ry, robot_rz = data[3], data[4], data[5]
+        aurora_x, aurora_y, aurora_z = data[6], data[7], data[8]
+        aurora_quat_x, aurora_quat_y, aurora_quat_z, aurora_quat_w = data[9], data[10], data[11], data[12]
 
-    # 特異値分解を実行
-    U, S, V = np.linalg.svd(H, full_matrices=False)
+        # arm_from_robotの同次変換行列を作成
+        t_arm_from_robot = np.array([robot_x, robot_y, robot_z])
+        R_matrix_robot = R.from_rotvec([robot_rx, robot_ry, robot_rz]).as_matrix()
+        T_arm_from_robot = Transform(R_matrix_robot, t_arm_from_robot).matrix
+        T_arm_from_robot_list.append(T_arm_from_robot)
 
-    # 回転行列 R を計算
-    R = np.dot(U, V)
+        # sensor_from_auroraの同次変換行列を作成
+        t_sensor_from_aurora = np.array([aurora_x, aurora_y, aurora_z])
+        R_matrix_aurora = R.from_quat([aurora_quat_x, aurora_quat_y, aurora_quat_z, aurora_quat_w]).as_matrix()
+        T_sensor_from_aurora = Transform(R_matrix_aurora, t_sensor_from_aurora).matrix
+        T_sensor_from_aurora_list.append(T_sensor_from_aurora)
 
-    # 右手系の座標系を保つためのチェック
-    if np.linalg.det(R) < 0:
-        V[-1, :] = -V[-1, :]
-        R = np.dot(U, V)  # または np.dot(U, V.T)
-
-    # 並行移動ベクトル t を計算
-    t = centroid_robot - np.dot(R, centroid_aurora)
-
-    return R, t
+    return T_arm_from_robot_list, T_sensor_from_aurora_list
