@@ -91,3 +91,30 @@ def load_csv_data(file_path):
         T_sensor_from_aurora_list.append(T_sensor_from_aurora)
 
     return T_arm_from_robot_list, T_sensor_from_aurora_list
+
+def compute_T_arm_from_robot(t_sensor_from_aurora, quaternion_sensor_from_aurora,
+                             T_aurora_from_robot,
+                             T_arm_from_sensor):
+    """
+    T_arm_from_robotを計算する関数
+    t_sensor_from_aurora: センサーのオイラー角 [x, y, z]
+    quaternion_sensor_from_aurora: センサーのクォータニオン [x, y, z, w]
+    T_aurora_from_robot: 4x4同次変換行列
+    T_arm_from_sensor: 4x4同次変換行列
+    戻り値: T_arm_from_robot: 4x4同次変換行列
+    """
+    # T_sensor_from_auroraを作成
+    R_sensor_from_aurora = R.from_quat(quaternion_sensor_from_aurora).as_matrix()
+    T_sensor_from_aurora_transform = Transform(R_sensor_from_aurora, t_sensor_from_aurora)
+
+    # T_sensor_from_robotを求める
+    T_aurora_from_robot_transform = Transform.from_matrix(T_aurora_from_robot)
+    T_sensor_from_robot_transform = T_aurora_from_robot_transform @ T_sensor_from_aurora_transform
+
+    # T_arm_from_robotを求める
+    T_arm_from_sensor_transform = Transform.from_matrix(T_arm_from_sensor)
+    T_arm_from_robot_transform = T_sensor_from_robot_transform @ T_arm_from_sensor_transform
+
+    print("TTTTTTTTT")
+
+    return T_arm_from_robot_transform.matrix

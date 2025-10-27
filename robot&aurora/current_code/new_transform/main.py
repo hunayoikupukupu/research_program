@@ -1,32 +1,7 @@
 from calibration.world_calibration import WorldCalibration
 from calibration.handeye_calibration import HandEyeCalibration
-from calibration.transformation_utils import Transform
+from calibration.transformation_utils import Transform, compute_T_arm_from_robot
 from scipy.spatial.transform import Rotation as R
-
-def compute_T_arm_from_robot(t_sensor_from_aurora, quaternion_sensor_from_aurora,
-                             T_aurora_from_robot,
-                             T_arm_from_sensor):
-    """
-    T_arm_from_robotを計算する関数
-    t_sensor_from_aurora: センサーのオイラー角 [x, y, z]
-    quaternion_sensor_from_aurora: センサーのクォータニオン [x, y, z, w]
-    T_aurora_from_robot: 4x4同次変換行列
-    T_arm_from_sensor: 4x4同次変換行列
-    戻り値: T_arm_from_robot: 4x4同次変換行列
-    """
-    # T_sensor_from_auroraを作成
-    R_sensor_from_aurora = R.from_quat(quaternion_sensor_from_aurora).as_matrix()
-    T_sensor_from_aurora_transform = Transform(R_sensor_from_aurora, t_sensor_from_aurora)
-
-    # T_sensor_from_robotを求める
-    T_aurora_from_robot_transform = Transform.from_matrix(T_aurora_from_robot)
-    T_sensor_from_robot_transform = T_aurora_from_robot_transform @ T_sensor_from_aurora_transform
-
-    # T_arm_from_robotを求める
-    T_arm_from_sensor_transform = Transform.from_matrix(T_arm_from_sensor)
-    T_arm_from_robot_transform = T_sensor_from_robot_transform @ T_arm_from_sensor_transform
-
-    return T_arm_from_robot_transform.matrix
 
 def main(goal_aurora_point, goal_aurora_quaternion, world_calib_csv, hand_eye_calib_csv):
 
@@ -50,14 +25,13 @@ def main(goal_aurora_point, goal_aurora_quaternion, world_calib_csv, hand_eye_ca
     print(f"Euler angles (degrees): Roll: {euler_arm_from_sensor[2]:.2f}, Pitch: {euler_arm_from_sensor[1]:.2f}, Yaw: {euler_arm_from_sensor[0]:.2f}")
     print(f"Translation vector: x: {t_arm_from_sensor[0]:.2f}, y: {t_arm_from_sensor[1]:.2f}, z: {t_arm_from_sensor[2]:.2f}")
 
-    # goal_aurora_pointとgoal_aurora_quaternionから目標となるT_arm_from_robotを計算
-
     T_arm_from_robot = compute_T_arm_from_robot(
         t_sensor_from_aurora=goal_aurora_point,
         quaternion_sensor_from_aurora=goal_aurora_quaternion,
         T_aurora_from_robot=T_aurora_from_robot,
         T_arm_from_sensor=T_arm_from_sensor
     )
+
 
     print("Computed T_arm_from_robot:")
     print(T_arm_from_robot)
