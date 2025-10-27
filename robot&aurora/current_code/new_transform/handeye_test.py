@@ -65,7 +65,7 @@ if __name__ == "__main__":
     result = main(
         goal_point=[300, 0, 100],                   # 変換前のsensor_from_aurora [x, y, z]
         goal_quaternion=[0, 0, 0, 1],               # 変換前のsensor_from_aurora [x, y, z, w]
-        world_calib_csv="data/AUFRO_R10--40-60_T20-10--150_ARFSE-R-40-170-90_T0-0-0_n0_qn0.csv",   # ワールドキャリブレーション用CSVファイルのパス
-        hand_eye_calib_csv="data/AUFRO_R10--40-60_T20-10--150_ARFSE-R-40-170-90_T0-0-0_n0_qn0.csv",  # ハンドアイキャリブレーション用CSVファイルのパス
-        csv_row=[75.0,-50.0,-350.0,0.0,0.0,0.0,-120.13629,20.44596,-178.25329,0.73994,0.19827,-0.16637,-0.62089]
+        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_20251024.csv",   # ワールドキャリブレーション用CSVファイルのパス
+        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_20251024.csv",  # ハンドアイキャリブレーション用CSVファイルのパス
+        csv_row=[200.0,45.0,-350.0,-0.0,-0.0,180.0,-99.87,34.54,-82.56,0.005,-0.01,0.558,0.83]
     )

@@ -75,10 +75,8 @@ class HandEyeCalibration:
             R_X_i = R_sensor_from_robot.T @ R_arm_from_robot
             R_X_sum += R_X_i
         
-        R_X_avg = R_X_sum / n
-        
         try:
-            U, S, Vt = np.linalg.svd(R_X_avg)
+            U, S, Vt = np.linalg.svd(R_X_sum)
         except np.linalg.LinAlgError as e:
             print(f"SVD計算エラー: {e}")
             return None

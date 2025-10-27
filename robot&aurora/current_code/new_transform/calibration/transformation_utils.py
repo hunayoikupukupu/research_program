@@ -80,7 +80,7 @@ def load_csv_data(file_path):
 
         # arm_from_robotの同次変換行列を作成
         t_arm_from_robot = np.array([robot_x, robot_y, robot_z])
-        R_matrix_robot = R.from_rotvec([robot_rx, robot_ry, robot_rz]).as_matrix()
+        R_matrix_robot = R.from_rotvec([robot_rx, robot_ry, robot_rz], degrees=True).as_matrix()
         T_arm_from_robot = Transform(R_matrix_robot, t_arm_from_robot).matrix
         T_arm_from_robot_list.append(T_arm_from_robot)
 

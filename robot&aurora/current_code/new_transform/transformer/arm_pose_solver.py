@@ -1,1 +1,0 @@
-# arm_from_robotを求める

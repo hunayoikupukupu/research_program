@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 import sys
 from scipy.spatial.transform import Rotation as R
-from handeye_test import main as run_handeye_calibration
+from main import main as run_pose_transoformation
 
 try:
     # Auroraトラッカーのライブラリをインポート
@@ -109,13 +109,16 @@ def main():
                 world_calib_csv = "robot&aurora/current_code/calibration_data/aurora_robot_pose_log_20251024.csv"
                 hand_eye_calib_csv = "robot&aurora/current_code/calibration_data/aurora_robot_pose_log_20251024.csv"
                 # ハンドアイキャリブレーションを実行
-                T_aurora_from_robot, T_arm_from_sensor = run_handeye_calibration(
-                    goal_point=[pos_x, pos_y, pos_z],
-                    goal_quaternion=[quat_x, quat_y, quat_z, quat_w],
+                T_arm_from_robot = run_pose_transoformation(
+                    goal_aurora_point=[pos_x, pos_y, pos_z],
+                    goal_aurora_quaternion=[quat_x, quat_y, quat_z, quat_w],
                     world_calib_csv=world_calib_csv,
                     hand_eye_calib_csv=hand_eye_calib_csv,
-                    csv_row=[robot_pos_x, robot_pos_y, robot_pos_z, robot_rx, robot_ry, robot_rz, pos_x, pos_y, pos_z, quat_x, quat_y, quat_z, quat_w]
                 )
+
+                print(f"ロボットアーム姿勢 (オイラー角): Roll={robot_roll:.2f}°, Pitch={robot_pitch:.2f}°, Yaw={robot_yaw:.2f}°")
+                print(f"ロボットアーム姿勢 (AxisAngle): RX={robot_rx:.2f}, RY={robot_ry:.2f}, RZ={robot_rz:.2f}")
+                print(f"ロボットアーム位置: X={robot_pos_x:.2f}, Y={robot_pos_y:.2f}, Z={robot_pos_z:.2f}")
 
         except KeyboardInterrupt:
             print("\nプログラムを終了します...")
