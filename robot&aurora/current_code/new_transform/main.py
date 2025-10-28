@@ -1,6 +1,6 @@
 from calibration.world_calibration import WorldCalibration
 from calibration.handeye_calibration import HandEyeCalibration
-from calibration.transformation_utils import Transform, compute_T_arm_from_robot
+from calibration.transformation_utils import compute_T_arm_from_robot
 from scipy.spatial.transform import Rotation as R
 
 def main(goal_aurora_point, goal_aurora_quaternion, world_calib_csv, hand_eye_calib_csv):

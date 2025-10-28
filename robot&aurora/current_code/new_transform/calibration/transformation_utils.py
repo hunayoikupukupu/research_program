@@ -92,6 +92,7 @@ def load_csv_data(file_path):
 
     return T_arm_from_robot_list, T_sensor_from_aurora_list
 
+# T_arm_from_robotを計算する関数
 def compute_T_arm_from_robot(t_sensor_from_aurora, quaternion_sensor_from_aurora,
                              T_aurora_from_robot,
                              T_arm_from_sensor):
@@ -115,6 +116,41 @@ def compute_T_arm_from_robot(t_sensor_from_aurora, quaternion_sensor_from_aurora
     T_arm_from_sensor_transform = Transform.from_matrix(T_arm_from_sensor)
     T_arm_from_robot_transform = T_sensor_from_robot_transform @ T_arm_from_sensor_transform
 
-    print("TTTTTTTTT")
-
     return T_arm_from_robot_transform.matrix
+
+
+# 2つの同次変換行列の差分を計算する関数
+def compute_transform_difference(T1, T2):
+    """
+    2つの同次変換行列の差分を計算する関数
+    T1, T2: 4x4同次変換行列
+    戻り値:
+        delta_t: 並進差分ベクトル (x, y, z)
+        delta_rotvec: 回転差分ベクトル (軸×角度)
+        delta_t_norm: 並進差の大きさ
+        delta_angle: 回転角の大きさ（ラジアン）
+    """
+
+    # Transformオブジェクトに変換
+    T_transform1 = Transform.from_matrix(T1)
+    T_transform2 = Transform.from_matrix(T2)
+
+    # 並進成分
+    t_transform1 = T_transform1.t
+    t_transform2 = T_transform2.t
+    delta_t = t_transform2 - t_transform1
+    delta_t_norm = np.linalg.norm(delta_t)
+
+    # 回転成分
+    R1 = T_transform1.R
+    R2 = T_transform2.R
+    R_diff = R1.T @ R2
+    delta_rotvec = R.from_matrix(R_diff).as_rotvec()
+    delta_angle_rad = np.linalg.norm(delta_rotvec)
+    delta_angle_deg = np.degrees(delta_angle_rad)
+
+    print(f"並進差分ベクトル: {delta_t}, 大きさ: {delta_t_norm}")
+    print(f"回転差分ベクトル: {delta_rotvec}, 回転角の大きさ: {delta_angle_deg:.3f} 度")
+
+
+    return delta_t, delta_rotvec, delta_t_norm, delta_angle_deg

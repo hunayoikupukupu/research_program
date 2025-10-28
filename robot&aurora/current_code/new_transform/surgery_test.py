@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import time
 from scipy.spatial.transform import Rotation as R
-from calibration.transformation_utils import Transform
+from calibration.transformation_utils import Transform, compute_transform_difference
 from main import main as run_pose_transoformation
 
 try:
@@ -13,13 +13,6 @@ except ImportError as e:
     print(f"エラー: 必要なライブラリがインポートできません。{e}")
     print("utils.probe モジュールと sksurgerynditracker がインストールされていることを確認してください。")
     sys.exit(1)
-
-def pose_to_matrix(pos, quat):
-    """位置ベクトルとクォータニオンから4x4同次変換行列を作成する関数"""
-    matrix = np.eye(4)
-    matrix[:3, :3] = R.from_quat(quat).as_matrix()
-    matrix[:3, 3] = pos
-    return matrix
 
 def record_relative_transform(aurora):
     """2つのプローブ間の相対的な剛体変換行列を記録する関数"""
@@ -67,17 +60,17 @@ def move_robot_to_goal(arm, aurora, T_lower_from_upper):
 
     # lower_probeのゴールとなる変換行列を計算
     # T_lower_from_aurora = T_upper_from_aurora @ T_lower_from_upper
-    T_lower_from_aurora_transform = T_upper_from_aurora_transform @ T_lower_from_upper_transform
+    T_lower_from_aurora_transform_goal = T_upper_from_aurora_transform @ T_lower_from_upper_transform
 
     # ゴール変換行列から位置とクォータニオンを抽出
-    t_lower_from_aurora = T_lower_from_aurora_transform.t
-    R_lower_from_aurora = T_lower_from_aurora_transform.R
-    quat_lower_from_aurora = R.from_matrix(R_lower_from_aurora).as_quat()
+    t_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.t
+    R_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.R
+    quat_lower_from_aurora_goal = R.from_matrix(R_lower_from_aurora_goal).as_quat()
 
     # main.pyの関数を使用して、ロボットアームの目標姿勢を計算
     T_arm_from_robot = run_pose_transoformation(
-        goal_aurora_point=t_lower_from_aurora,
-        goal_aurora_quaternion=quat_lower_from_aurora,
+        goal_aurora_point=t_lower_from_aurora_goal,
+        goal_aurora_quaternion=quat_lower_from_aurora_goal,
         world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202510271708.csv",
         hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202510271708.csv"
     )
@@ -104,6 +97,22 @@ def move_robot_to_goal(arm, aurora, T_lower_from_upper):
     arm.set_position_aa(axis_angle_pose=angle_pose, wait=True, speed=20)
 
     print("ロボットアームの移動が完了しました。")
+
+    print("目標とした位置・姿勢と現在の位置・姿勢の差分を計算中...")
+    # 目標としたT_lower_from_auroraを取得
+    T_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.matrix
+
+    # 現在（移動後）のT_lower_from_auroraを取得
+    probes_after = generateProbe(aurora.get_frame())
+    lower_probe_after = probes_after[0]
+    t_lower_from_aurora_after = np.array([lower_probe_after.pos.x, lower_probe_after.pos.y, lower_probe_after.pos.z])
+    quat_lower_from_aurora_after = np.array([lower_probe_after.quat.x, lower_probe_after.quat.y, lower_probe_after.quat.z, lower_probe_after.quat.w])
+    R_lower_from_aurora_after = R.from_quat(quat_lower_from_aurora_after).as_matrix()
+    T_lower_from_aurora_after = Transform(R_lower_from_aurora_after, t_lower_from_aurora_after).matrix
+
+    # 差分を計算
+    compute_transform_difference(T_lower_from_aurora_goal, T_lower_from_aurora_after)
+
 
 def main():
     # ポート設定
