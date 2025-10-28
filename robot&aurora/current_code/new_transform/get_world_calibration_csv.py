@@ -184,6 +184,6 @@ if __name__ == "__main__":
         x_range=(50, 200),                    # X座標の範囲 (開始値, 終了値)
         y_range=(-75, 75),                     # Y座標の範囲 (開始値, 終了値)
         z_range=(-175, -325),                     # Z座標の範囲 (開始値, 終了値)
-        N=5,                                   # サンプル数（各辺N+1ポイント）
-        output_file="robot&aurora/current_code/calibration_data/aurora_robot_pose_log_202510271708.csv",
+        N=10,                                   # サンプル数（各辺N+1ポイント）
+        output_file="robot&aurora/current_code/calibration_data/aurora_robot_pose_log_202510281545.csv",
     )
