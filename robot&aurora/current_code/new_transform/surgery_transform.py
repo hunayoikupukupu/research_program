@@ -71,8 +71,8 @@ def move_robot_to_goal(arm, aurora, T_lower_from_upper):
     T_arm_from_robot = run_pose_transoformation(
         goal_aurora_point=t_lower_from_aurora_goal,
         goal_aurora_quaternion=quat_lower_from_aurora_goal,
-        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202510271708.csv",
-        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202510271708.csv"
+        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202510281545.csv",
+        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_orientation_log_2020510281902.csv"
     )
 
     T_arm_from_robot_transform = Transform.from_matrix(T_arm_from_robot)
