@@ -10,16 +10,16 @@ import sys
 def load_and_group_data(filepath, grouping_precision=0):
     """
     CSVを読み込み、angle_diffを計算し、グループ化された平均値と
-    全体の平均値の両方を返します。
+    全体の統計情報（平均、最大、最小）の両方を返します。
 
     Args:
         filepath (str): CSVファイルへのパス
         grouping_precision (int): グループ化のための丸め精度
 
     Returns:
-        tuple: (df_grouped, overall_means)
+        tuple: (df_grouped, overall_stats)
                df_grouped: グループ化・ソートされたDataFrame
-               overall_means: 全体の平均値を含む辞書
+               overall_stats: 全体の統計情報を含む辞書
                または (None, None) (エラー時)
     """
     print(f"Loading data from '{filepath}'...")
@@ -68,13 +68,26 @@ def load_and_group_data(filepath, grouping_precision=0):
     # 4. 差分回転の角度(magnitude)を計算し、度(degree)に変換
     df['angle_diff'] = np.degrees(R_diff.magnitude())
     
-    # 5. 【全体の平均値】を先に計算
-    overall_means = {
-        'delta_t_robot_norm': df['delta_t_robot_norm'].mean(),
-        'delta_R_robot_angle': df['delta_R_robot_angle'].mean(),
-        'delta_t_aurora_norm': df['delta_t_aurora_norm'].mean(),
-        'delta_R_aurora_angle': df['delta_R_aurora_angle'].mean()
-    }
+    # 5. 【全体の統計情報】を先に計算
+    cols_to_analyze = [
+        'delta_t_robot_norm', 'delta_R_robot_angle',
+        'delta_t_aurora_norm', 'delta_R_aurora_angle'
+    ]
+    
+    overall_stats = {}
+    print("\n--- Overall Statistics (Before Grouping) ---")
+    for col in cols_to_analyze:
+        overall_stats[col] = {
+            'mean': df[col].mean(),
+            'max': df[col].max(),
+            'min': df[col].min()
+        }
+        # ユーザーの要求通り、テキストで表示
+        print(f"[{col}]")
+        print(f"  Mean: {overall_stats[col]['mean']:.4f}")
+        print(f"  Max:  {overall_stats[col]['max']:.4f}")
+        print(f"  Min:  {overall_stats[col]['min']:.4f}")
+    print("----------------------------------------------\n")
 
     # 6. 【グループ化】
     df['angle_diff_group'] = df['angle_diff'].round(grouping_precision)
@@ -91,18 +104,19 @@ def load_and_group_data(filepath, grouping_precision=0):
     df_grouped = df_grouped.sort_index(ascending=True)
 
     print("Preprocessing and grouping complete.")
-    return df_grouped, overall_means
+    return df_grouped, overall_stats
 
 
 # --- 2. グラフの描画 ---
 
-def plot_delta_graphs(df_grouped, overall_means, source='robot'):
+def plot_delta_graphs(df_grouped, overall_stats, source='robot'):
     """
-    グループ化されたDataFrameに基づいて、棒グラフと全体の平均線を描画します。
+    グループ化されたDataFrameに基づいて、棒グラフと全体の平均線、
+    および最大/最小値をテキストで描画します。
 
     Args:
         df_grouped (pd.DataFrame): グループ化・ソート済みのDataFrame
-        overall_means (dict): 全体の平均値を含む辞書
+        overall_stats (dict): 全体の統計情報を含む辞書
         source (str): 'robot' または 'aurora'
     """
     if source.lower() == 'robot':
@@ -117,12 +131,18 @@ def plot_delta_graphs(df_grouped, overall_means, source='robot'):
         print("Error: source must be 'robot' or 'aurora'.")
         return
 
-    # 必要な平均値を取得
+    # 必要な統計値を取得 (辞書の階層が深くなったため修正)
     try:
-        mean_t = overall_means[t_col]
-        mean_R = overall_means[R_col]
+        mean_t = overall_stats[t_col]['mean']
+        max_t = overall_stats[t_col]['max']
+        min_t = overall_stats[t_col]['min']
+        
+        mean_R = overall_stats[R_col]['mean']
+        max_R = overall_stats[R_col]['max']
+        min_R = overall_stats[R_col]['min']
+        
     except KeyError:
-        print(f"Error: Missing mean values for '{source}' in overall_means dict.")
+        print(f"Error: Missing mean/max/min values for '{source}' in overall_stats dict.")
         return
 
     # X軸の設定
@@ -145,6 +165,14 @@ def plot_delta_graphs(df_grouped, overall_means, source='robot'):
     # 全体平均の水平線を追加
     ax1.axhline(y=mean_t, color='red', linestyle='--', linewidth=2, 
                 label=f'Overall Mean: {mean_t:.3f}', zorder=4)
+    
+    # 最大値と最小値をテキストで追加
+    stats_text_t = f"Max: {max_t:.3f}\nMin: {min_t:.3f}"
+    # グラフの右上にテキストボックスを配置
+    ax1.text(0.98, 0.98, stats_text_t, transform=ax1.transAxes, fontsize=10,
+             verticalalignment='top', horizontalalignment='right',
+             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+             
     ax1.legend()
 
     # --- グラフ2: Delta Rotation Angle ---
@@ -159,6 +187,14 @@ def plot_delta_graphs(df_grouped, overall_means, source='robot'):
     # 全体平均の水平線を追加
     ax2.axhline(y=mean_R, color='red', linestyle='--', linewidth=2, 
                 label=f'Overall Mean: {mean_R:.3f}', zorder=4)
+
+    # 最大値と最小値をテキストで追加
+    stats_text_R = f"Max: {max_R:.3f}\nMin: {min_R:.3f}"
+    # グラフの右上にテキストボックスを配置
+    ax2.text(0.98, 0.98, stats_text_R, transform=ax2.transAxes, fontsize=10,
+             verticalalignment='top', horizontalalignment='right',
+             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+             
     ax2.legend()
 
 
@@ -178,8 +214,8 @@ if __name__ == "__main__":
     # file_path = input("Enter the path to your CSV file: ")
 
     # 2. データの読み込みと前処理
-    #    整数(precision=0)で丸めてグループ化
-    grouped_data_df, overall_means = load_and_group_data(file_path, grouping_precision=0)
+    #    整数(precision=0)で丸めてグループ化
+    grouped_data_df, overall_stats = load_and_group_data(file_path, grouping_precision=0)
 
     # 3. データ読み込み成功の確認
     if grouped_data_df is None:
@@ -195,4 +231,4 @@ if __name__ == "__main__":
 
     # 5. 選択されたグラフを描画
     print(f"Plotting {choice} data...")
-    plot_delta_graphs(grouped_data_df, overall_means, source=choice)
+    plot_delta_graphs(grouped_data_df, overall_stats, source=choice)

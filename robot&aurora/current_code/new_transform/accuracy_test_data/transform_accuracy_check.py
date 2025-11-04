@@ -63,33 +63,43 @@ for ax, col_name in zip(axs_flat, color_columns):
         print(f"警告: 列 '{col_name}' が見つかりません。このグラフをスキップします。")
         continue
 
+    # --- ★ Mean, Max, Min を計算 ★ ---
     mean_val = colors.mean()
+    max_val = colors.max()
+    min_val = colors.min()
+    # ----------------------------------
 
     scatter = ax.scatter(x, y, z, c=colors, cmap='jet', s=50, marker='o')
 
     # --- 視点の変更 ★ ---
-    # 仰角(elev)を30度、方位角(azim)を45度に変更
     ax.view_init(elev=30, azim=45) 
+
+    # --- ★ Y軸の反転 ★ ---
+    ax.invert_yaxis()
+    # -----------------------
 
     # ラベルとタイトルの設定
     ax.set_xlabel('robot_z')
     ax.set_ylabel('robot_y')
     ax.set_zlabel('robot_x (Height)')
-    # タイトルに選択したシステム名('Robot' or 'Aurora')を追加
     ax.set_title(f'{plot_title_prefix} - Color: {col_name}', fontsize=16, pad=30) 
 
     # カラーバーの設定 (padを少し調整)
     cbar = fig.colorbar(scatter, ax=ax, shrink=0.6, aspect=15, pad=0.1) 
     cbar.set_label(col_name, fontsize=12)
 
-    # 平均値のテキスト表示
-    ax.text2D(0.05, 0.95, f'Mean: {mean_val:.3f}', 
+    # --- ★ 平均値・最大値・最小値のテキスト表示 ★ ---
+    # \n は改行を意味します
+    stats_text = f'Mean: {mean_val:.3f}\nMax: {max_val:.3f}\nMin: {min_val:.3f}'
+    
+    ax.text2D(0.05, 0.95, stats_text, 
               transform=ax.transAxes, 
               fontsize=12,
+              verticalalignment='top', # ★ テキストボックスの上揃えを指定
               bbox=dict(boxstyle='round,pad=0.3', fc='yellow', alpha=0.5))
+    # ----------------------------------------------
 
 # --- 6. レイアウトの調整と表示 ---
-# wspaceを調整 (左右のグラフの間隔)
 plt.subplots_adjust(wspace=0.2, hspace=0.3, left=0.05, right=0.95, top=0.9, bottom=0.1)
 
 # グラフを画面に表示
