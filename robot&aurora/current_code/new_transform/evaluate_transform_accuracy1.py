@@ -98,8 +98,8 @@ def collect_diff_data(arm, aurora, x_range, y_range, z_range, N):
         T_arm_from_robot = run_pose_transoformation(
             goal_aurora_point=t_sensor_from_aurora_goal,
             goal_aurora_quaternion=quat_sensor_from_aurora_goal,
-            world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202510281545.csv",
-            hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_orientation_log_2020510281902.csv"
+            world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_20251105.csv",
+            hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_20251105.csv"
         )
 
         # T_arm_from_robotをTransformオブジェクトに変換
@@ -380,7 +380,7 @@ def main(x_range, y_range, z_range, N, output_file):
 if __name__ == "__main__":
     # ここで全てのパラメータを一か所で設定（ここだけを変更すれば良い）
     main(
-        x_range=(75, 175),                    # X座標の範囲 (開始値, 終了値)
+        x_range=(100, 200),                    # X座標の範囲 (開始値, 終了値)
         y_range=(-50, 50),                     # Y座標の範囲 (開始値, 終了値)
         z_range=(-200, -300),                     # Z座標の範囲 (開始値, 終了値)
         N=5,                                   # サンプル数（各辺N+1ポイント）

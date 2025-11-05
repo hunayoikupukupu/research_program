@@ -5,16 +5,21 @@ from scipy.spatial.transform import Rotation
 import os
 import sys
 
-# --- 1. データの読み込みと前処理 (回転ベクトルとして) ---
+# --- 1. データの読み込みと前処理 (★修正: データ数を表示) ---
 
-def load_and_group_data(filepath, grouping_precision=0):
+def load_and_group_data(filepath, bin_width=3, bin_start=None):
     """
-    CSVを読み込み、angle_diffを計算し、グループ化された平均値と
+    CSVを読み込み、angle_diffを計算し、指定された範囲(bin_width)と
+    開始位置(bin_start)でグループ化された平均値と、
     全体の統計情報（平均、最大、最小）の両方を返します。
+    (★各グループのデータ数をコンソールに表示する機能を追加)
 
     Args:
         filepath (str): CSVファイルへのパス
-        grouping_precision (int): グループ化のための丸め精度
+        bin_width (float or int): angle_diffをグループ化する際の範囲の幅 (例: 3)
+        bin_start (float or int, optional): 
+            ビニングを開始する最小値 (例: 5)。
+            Noneの場合はデータの最小値から開始。
 
     Returns:
         tuple: (df_grouped, overall_stats)
@@ -89,35 +94,77 @@ def load_and_group_data(filepath, grouping_precision=0):
         print(f"  Min:  {overall_stats[col]['min']:.4f}")
     print("----------------------------------------------\n")
 
-    # 6. 【グループ化】
-    df['angle_diff_group'] = df['angle_diff'].round(grouping_precision)
+    # --- 6. 【グループ化】 ---
+    if df['angle_diff'].empty:
+        print("Error: 'angle_diff' column is empty or calculation failed.")
+        return None, None
+        
+    try:
+        # ビンの最大値はデータ全体をカバーするように動的に決定
+        max_val = np.ceil(df['angle_diff'].max())
+        
+        # bin_start が指定されているか確認
+        if bin_start is not None:
+            min_val = bin_start
+            print(f"Grouping by 'angle_diff' starting from {bin_start} with width {bin_width}...")
+        else:
+            # 指定がない場合は従来通り、データの最小値から
+            min_val = np.floor(df['angle_diff'].min())
+            print(f"Grouping by 'angle_diff' from min value ({min_val}) with width {bin_width}...")
+
+        # np.arange を使い、min_val から max_val を超えるまで bin_width 刻みでビンを作成
+        bins = np.arange(min_val, max_val + bin_width, bin_width)
+        
+        if len(bins) < 2:
+            # データが開始値より小さい場合など
+            bins = np.array([min_val, min_val + bin_width])
+            print(f"Warning: Data max ({max_val}) might be less than bin_start ({min_val}). Creating first bin ({bins[0]}, {bins[1]}] anyway.")
+
+        print(f"Bins created: {bins}")
+        
+        # pd.cutでグループ化
+        df['angle_diff_group'] = pd.cut(df['angle_diff'], bins=bins, right=True)
+
+    except Exception as e:
+        print(f"Error during binning (pd.cut): {e}")
+        return None, None
+
+    # --- ▼ (★修正箇所) 各グループのデータ数を計算して表示 ▼ ---
+    print("\n--- Data Counts per Group ---")
+    # `dropna=False` で NaN (ビン外) の数も表示
+    # `sort_index()` でビンの昇順に並び替え
+    group_counts = df['angle_diff_group'].value_counts(dropna=False).sort_index()
+    print(group_counts)
+    print("-------------------------------\n")
+    # --- ▲ (修正箇所 完了) ▲ ---
+
 
     # 7. グループ化して平均を計算
-    print(f"Grouping by angle_diff (rounded to {grouping_precision} decimal places) and calculating mean...")
+    print("Calculating mean for each group...")
     cols_to_average = [
         'delta_t_robot_norm', 'delta_R_robot_angle',
         'delta_t_aurora_norm', 'delta_R_aurora_angle'
     ]
+    
     df_grouped = df.groupby('angle_diff_group')[cols_to_average].mean()
 
     # 8. 【ソート】
     df_grouped = df_grouped.sort_index(ascending=True)
+    
+    # 9. (追加) プロットしやすいようにインデックスを文字列に変換
+    df_grouped.index = df_grouped.index.astype(str)
 
     print("Preprocessing and grouping complete.")
     return df_grouped, overall_stats
 
 
-# --- 2. グラフの描画 ---
+# --- 2. グラフの描画 (変更なし) ---
 
 def plot_delta_graphs(df_grouped, overall_stats, source='robot'):
     """
     グループ化されたDataFrameに基づいて、棒グラフと全体の平均線、
     および最大/最小値をテキストで描画します。
-
-    Args:
-        df_grouped (pd.DataFrame): グループ化・ソート済みのDataFrame
-        overall_stats (dict): 全体の統計情報を含む辞書
-        source (str): 'robot' または 'aurora'
+    (X軸はビニングされたカテゴリ)
     """
     if source.lower() == 'robot':
         t_col = 'delta_t_robot_norm'
@@ -131,7 +178,7 @@ def plot_delta_graphs(df_grouped, overall_stats, source='robot'):
         print("Error: source must be 'robot' or 'aurora'.")
         return
 
-    # 必要な統計値を取得 (辞書の階層が深くなったため修正)
+    # 必要な統計値を取得
     try:
         mean_t = overall_stats[t_col]['mean']
         max_t = overall_stats[t_col]['max']
@@ -145,30 +192,58 @@ def plot_delta_graphs(df_grouped, overall_stats, source='robot'):
         print(f"Error: Missing mean/max/min values for '{source}' in overall_stats dict.")
         return
 
-    # X軸の設定
-    x_labels = df_grouped.index.astype(str)
-    x_values = np.arange(len(x_labels)) # 棒グラフの位置
+    # --- X軸の設定 ---
+    x_labels = df_grouped.index
+    x_values = np.arange(len(x_labels)) # 棒グラフの位置 [0, 1, 2, ...]
+    
+    if len(x_values) == 0:
+        print("Error: No data to plot after grouping.")
+        return
+    
+    # --- X軸の目盛り間引き処理 ---
+    num_ticks = len(x_values)
+    
+    if num_ticks > 30: # 閾値（例: 30）
+        step = max(1, num_ticks // 15) # 15個程度のラベルが表示されるように調整
+        tick_indices = np.arange(0, num_ticks, step)
+        
+        if tick_indices[-1] != num_ticks - 1:
+             tick_indices = np.append(tick_indices, num_ticks - 1)
+        
+        tick_indices = np.unique(tick_indices)
+
+        ticks_to_show = x_values[tick_indices]
+        labels_to_show = x_labels[tick_indices]
+    else:
+        # ラベルが少ない場合は全て表示
+        ticks_to_show = x_values
+        labels_to_show = x_labels
+
 
     # 2つのグラフを横に並べて表示
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7)) # 高さを少し増やす
-    fig.suptitle(f'{title_prefix} - Motion Delta Analysis (Grouped & Sorted)', fontsize=16)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    fig.suptitle(f'{title_prefix} - Motion Delta Analysis (Grouped by Angle Range)', fontsize=16)
 
     # --- グラフ1: Delta Translation Norm ---
-    ax1.bar(x_values, df_grouped[t_col], color='royalblue', zorder=3, label='Grouped Mean')
+    
+    ax1.bar(x_values, df_grouped[t_col], color='royalblue', zorder=3, label='Grouped Mean', width=0.9) 
+    
     ax1.set_xlabel('Angle Diff from Base (RotVec[0,0,180]) (deg)', fontsize=12)
     ax1.set_ylabel('Mean Translation Norm (delta_t_norm)', fontsize=12)
     ax1.set_title(f'{title_prefix} - Mean Translation Norm', fontsize=14)
-    ax1.set_xticks(x_values)
-    ax1.set_xticklabels(x_labels, rotation=70) 
     ax1.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
 
-    # 全体平均の水平線を追加
+    # X軸の目盛りとラベルを設定
+    ax1.set_xlim(-0.5, len(x_values) - 0.5)
+    ax1.set_xticks(ticks_to_show)
+    ax1.set_xticklabels(labels_to_show, rotation=70) 
+
+    # 全体平均の水平線
     ax1.axhline(y=mean_t, color='red', linestyle='--', linewidth=2, 
-                label=f'Overall Mean: {mean_t:.3f}', zorder=4)
+                  label=f'Overall Mean: {mean_t:.3f}', zorder=4)
     
-    # 最大値と最小値をテキストで追加
+    # 最大値と最小値のテキスト
     stats_text_t = f"Max: {max_t:.3f}\nMin: {min_t:.3f}"
-    # グラフの右上にテキストボックスを配置
     ax1.text(0.98, 0.98, stats_text_t, transform=ax1.transAxes, fontsize=10,
              verticalalignment='top', horizontalalignment='right',
              bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
@@ -176,51 +251,73 @@ def plot_delta_graphs(df_grouped, overall_stats, source='robot'):
     ax1.legend()
 
     # --- グラフ2: Delta Rotation Angle ---
-    ax2.bar(x_values, df_grouped[R_col], color='seagreen', zorder=3, label='Grouped Mean')
+    
+    ax2.bar(x_values, df_grouped[R_col], color='seagreen', zorder=3, label='Grouped Mean', width=0.9)
+    
     ax2.set_xlabel('Angle Diff from Base (RotVec[0,0,180]) (deg)', fontsize=12)
     ax2.set_ylabel('Mean Rotation Angle (delta_R_angle) (deg)', fontsize=12)
     ax2.set_title(f'{title_prefix} - Mean Rotation Angle', fontsize=14)
-    ax2.set_xticks(x_values)
-    ax2.set_xticklabels(x_labels, rotation=70)
     ax2.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
 
-    # 全体平均の水平線を追加
-    ax2.axhline(y=mean_R, color='red', linestyle='--', linewidth=2, 
-                label=f'Overall Mean: {mean_R:.3f}', zorder=4)
+    # X軸の目盛りとラベルを設定 (ax1と同様)
+    ax2.set_xlim(-0.5, len(x_values) - 0.5)
+    ax2.set_xticks(ticks_to_show)
+    ax2.set_xticklabels(labels_to_show, rotation=70)
 
-    # 最大値と最小値をテキストで追加
+    # 全体平均の水平線
+    ax2.axhline(y=mean_R, color='red', linestyle='--', linewidth=2, 
+                  label=f'Overall Mean: {mean_R:.3f}', zorder=4)
+
+    # 最大値と最小値のテキスト
     stats_text_R = f"Max: {max_R:.3f}\nMin: {min_R:.3f}"
-    # グラフの右上にテキストボックスを配置
     ax2.text(0.98, 0.98, stats_text_R, transform=ax2.transAxes, fontsize=10,
              verticalalignment='top', horizontalalignment='right',
              bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
              
     ax2.legend()
 
-
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # メインタイトルと重ならないように調整
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    
+    # グラフを表示します
     plt.show()
 
 
-# --- 3. メイン処理（実行） ---
+# --- 3. メイン処理（実行） (変更なし) ---
 if __name__ == "__main__":
     
     # 1. ファイルパスの指定
-    # --- ↓↓↓ ファイルパスをここに入力してください ↓↓↓ ---
+    # --- ↓↓↓ ★★★【重要】★★★ ↓↓↓ ---
+    # 以下のパスを、あなたの環境のCSVファイルの
+    # 正しいパス (例: "C:/Users/YourUser/Desktop/data.csv" や "/home/user/my_data.csv")
+    # に書き換えてください。
+    
     file_path = "robot&aurora/current_code/new_transform/accuracy_test_data/transform_accuracy_orientation_202510290053.csv"
-    # --- ↑↑↑ ファイルパスをここに入力してください ↑↑↑ ---
+    
+    # --- ↑↑↑ ★★★【重要】★★★ ↑↑↑ ---
+    
     
     # (または、ターミナルからパスを入力させる場合は以下のコメントを解除)
     # file_path = input("Enter the path to your CSV file: ")
+    
+    # (★ご要望) 3度の範囲で、5から開始
+    bin_width_degrees = 4 
+    bin_start_value = 6
 
     # 2. データの読み込みと前処理
-    #    整数(precision=0)で丸めてグループ化
-    grouped_data_df, overall_stats = load_and_group_data(file_path, grouping_precision=0)
+    grouped_data_df, overall_stats = load_and_group_data(
+        file_path, 
+        bin_width=bin_width_degrees, 
+        bin_start=bin_start_value
+    )
 
     # 3. データ読み込み成功の確認
     if grouped_data_df is None:
         print("Failed to load or process data. Exiting.")
-        sys.exit(1) # エラーで終了
+        sys.exit(1)
+        
+    if grouped_data_df.empty:
+        print("No data was grouped (e.g., all data fell outside bins or was NaN). Exiting.")
+        sys.exit(1)
 
     # 4. ユーザーに 'robot' か 'aurora' を選択させる
     choice = ""

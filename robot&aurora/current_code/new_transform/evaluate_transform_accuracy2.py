@@ -105,8 +105,8 @@ def collect_diff_data_by_orientation(arm, aurora, position, roll_range, pitch_ra
                 T_arm_from_robot = run_pose_transoformation(
                     goal_aurora_point=t_sensor_from_aurora_goal,
                     goal_aurora_quaternion=quat_sensor_from_aurora_goal,
-                    world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202510281545.csv",
-                    hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_orientation_log_2020510281902.csv"
+                    world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_20251105.csv",
+                    hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_20251105.csv"
                 )
 
                 # T_arm_from_robotをTransformオブジェクトに変換

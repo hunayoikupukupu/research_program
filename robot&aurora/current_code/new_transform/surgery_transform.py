@@ -71,8 +71,8 @@ def move_robot_to_goal(arm, aurora, T_lower_from_upper):
     T_arm_from_robot = run_pose_transoformation(
         goal_aurora_point=t_lower_from_aurora_goal,
         goal_aurora_quaternion=quat_lower_from_aurora_goal,
-        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202510281545.csv",
-        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_orientation_log_2020510281902.csv"
+        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202511040132.csv",
+        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202511040132.csv"
     )
 
     T_arm_from_robot_transform = Transform.from_matrix(T_arm_from_robot)
@@ -82,15 +82,15 @@ def move_robot_to_goal(arm, aurora, T_lower_from_upper):
 
     print(f"ゴール位置 (Robot座標): {t_arm_from_robot}")
 
-    # ロボットアームを段階的に移動
-    print("ロボットアームをy,z方向に移動中...")
-    arm.set_position(y=t_arm_from_robot[1], z=t_arm_from_robot[2], wait=True, speed=50)
+    # # ロボットアームを段階的に移動
+    # print("ロボットアームをy,z方向に移動中...")
+    # arm.set_position(y=t_arm_from_robot[1], z=t_arm_from_robot[2], wait=True, speed=50)
 
-    print("1秒後にx軸方向の移動を開始します...")
-    time.sleep(1)
+    # print("1秒後にx軸方向の移動を開始します...")
+    # time.sleep(1)
     
-    print("ロボットアームをx方向に移動中...")
-    arm.set_position(x=t_arm_from_robot[0], wait=True, speed=50)
+    # print("ロボットアームをx方向に移動中...")
+    # arm.set_position(x=t_arm_from_robot[0], wait=True, speed=50)
 
     angle_pose = [t_arm_from_robot[0], t_arm_from_robot[1], t_arm_from_robot[2], arm_rotvec_from_robot[0], arm_rotvec_from_robot[1], arm_rotvec_from_robot[2]]
     print("ロボットアームの姿勢を調整中...")

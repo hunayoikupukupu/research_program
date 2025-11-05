@@ -184,7 +184,7 @@ if __name__ == "__main__":
         # Yawの範囲（複数の範囲をリストで指定）
         yaw_ranges=[(-180, -150), (150, 180)], 
         
-        N=6,                                      # 各範囲のサンプル数（各範囲でN+1ポイント取得）
+        N=2,                                      # 各範囲のサンプル数（各範囲でN+1ポイント取得）
         
         output_file="robot&aurora/current_code/new_transform/data/aurora_robot_orientation_log_2020510281902.csv"
     )
