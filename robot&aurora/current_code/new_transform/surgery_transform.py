@@ -41,40 +41,122 @@ def record_relative_transform(aurora):
     print("相対的な変換行列の記録が完了しました。")
     return T_lower_from_upper_transform.matrix
 
+# def move_robot_to_goal(arm, aurora, T_lower_from_upper):
+#     """ロボットをゴール位置に移動する関数"""
+#     print("ゴール位置を計算中...")
+    
+#     # 現在のupper_probeのAurora座標を取得
+#     probes = generateProbe(aurora.get_frame())
+#     upper_probe = probes[1]
+
+#     # 現在のupper_probeの位置と姿勢から、ワールド座標系での変換行列を計算
+#     t_upper_from_aurora = np.array([upper_probe.pos.x, upper_probe.pos.y, upper_probe.pos.z])
+#     quat_upper_from_aurora = np.array([upper_probe.quat.x, upper_probe.quat.y, upper_probe.quat.z, upper_probe.quat.w])
+#     R_upper_from_aurora = R.from_quat(quat_upper_from_aurora).as_matrix()
+#     T_upper_from_aurora_transform = Transform(R_upper_from_aurora, t_upper_from_aurora)
+
+#     # T_lower_from_upperをTransformオブジェクトに変換
+#     T_lower_from_upper_transform = Transform.from_matrix(T_lower_from_upper)
+
+#     # lower_probeのゴールとなる変換行列を計算
+#     # T_lower_from_aurora = T_upper_from_aurora @ T_lower_from_upper
+#     T_lower_from_aurora_transform_goal = T_upper_from_aurora_transform @ T_lower_from_upper_transform
+
+#     # ゴール変換行列から位置とクォータニオンを抽出
+#     t_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.t
+#     R_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.R
+#     quat_lower_from_aurora_goal = R.from_matrix(R_lower_from_aurora_goal).as_quat()
+
+#     # main.pyの関数を使用して、ロボットアームの目標姿勢を計算
+#     T_arm_from_robot = run_pose_transoformation(
+#         goal_aurora_point=t_lower_from_aurora_goal,
+#         goal_aurora_quaternion=quat_lower_from_aurora_goal,
+#         world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202511040132.csv",
+#         hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202511040132.csv"
+#     )
+
+#     T_arm_from_robot_transform = Transform.from_matrix(T_arm_from_robot)
+#     t_arm_from_robot = T_arm_from_robot_transform.t
+#     R_arm_from_robot = T_arm_from_robot_transform.R
+#     arm_rotvec_from_robot = R.from_matrix(R_arm_from_robot).as_rotvec(degrees=True)
+
+#     print(f"ゴール位置 (Robot座標): {t_arm_from_robot}")
+
+#     # # ロボットアームを段階的に移動
+#     # print("ロボットアームをy,z方向に移動中...")
+#     # arm.set_position(y=t_arm_from_robot[1], z=t_arm_from_robot[2], wait=True, speed=50)
+
+#     # print("1秒後にx軸方向の移動を開始します...")
+#     # time.sleep(1)
+    
+#     # print("ロボットアームをx方向に移動中...")
+#     # arm.set_position(x=t_arm_from_robot[0], wait=True, speed=50)
+
+#     angle_pose = [t_arm_from_robot[0], t_arm_from_robot[1], t_arm_from_robot[2], arm_rotvec_from_robot[0], arm_rotvec_from_robot[1], arm_rotvec_from_robot[2]]
+#     print("ロボットアームの姿勢を調整中...")
+#     arm.set_position_aa(axis_angle_pose=angle_pose, wait=True, speed=20)
+
+#     print("ロボットアームの移動が完了しました。")
+
+#     print("目標とした位置・姿勢と現在の位置・姿勢の差分を計算中...")
+#     # 目標としたT_lower_from_auroraを取得
+#     T_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.matrix
+
+#     # 現在（移動後）のT_lower_from_auroraを取得
+#     probes_after = generateProbe(aurora.get_frame())
+#     lower_probe_after = probes_after[0]
+#     t_lower_from_aurora_after = np.array([lower_probe_after.pos.x, lower_probe_after.pos.y, lower_probe_after.pos.z])
+#     quat_lower_from_aurora_after = np.array([lower_probe_after.quat.x, lower_probe_after.quat.y, lower_probe_after.quat.z, lower_probe_after.quat.w])
+#     R_lower_from_aurora_after = R.from_quat(quat_lower_from_aurora_after).as_matrix()
+#     T_lower_from_aurora_after = Transform(R_lower_from_aurora_after, t_lower_from_aurora_after).matrix
+
+#     # 差分を計算
+#     compute_transform_difference(T_lower_from_aurora_goal, T_lower_from_aurora_after)
+
 def move_robot_to_goal(arm, aurora, T_lower_from_upper):
-    """ロボットをゴール位置に移動する関数"""
+    """
+    ロボットをゴール位置（Lowerセンサーの相対位置 + Z軸3mmオフセット）に移動する関数
+    """
     print("ゴール位置を計算中...")
     
-    # 現在のupper_probeのAurora座標を取得
+    # 1. 現在のupper_probe（頭蓋骨）のAurora座標を取得
     probes = generateProbe(aurora.get_frame())
     upper_probe = probes[1]
 
-    # 現在のupper_probeの位置と姿勢から、ワールド座標系での変換行列を計算
+    # 現在のupper_probeの位置と姿勢から、変換行列を作成
     t_upper_from_aurora = np.array([upper_probe.pos.x, upper_probe.pos.y, upper_probe.pos.z])
     quat_upper_from_aurora = np.array([upper_probe.quat.x, upper_probe.quat.y, upper_probe.quat.z, upper_probe.quat.w])
     R_upper_from_aurora = R.from_quat(quat_upper_from_aurora).as_matrix()
     T_upper_from_aurora_transform = Transform(R_upper_from_aurora, t_upper_from_aurora)
 
-    # T_lower_from_upperをTransformオブジェクトに変換
+    # 2. 記録された相対変換行列（T_lower_from_upper）を読み込み
     T_lower_from_upper_transform = Transform.from_matrix(T_lower_from_upper)
 
-    # lower_probeのゴールとなる変換行列を計算
-    # T_lower_from_aurora = T_upper_from_aurora @ T_lower_from_upper
-    T_lower_from_aurora_transform_goal = T_upper_from_aurora_transform @ T_lower_from_upper_transform
+    # 3. オフセット行列の作成 (LowerセンサーのローカルZ軸に対して3.0mm)
+    # 4x4の単位行列の [2, 3] 要素に移動量を設定します
+    offset_matrix = np.eye(4)
+    offset_matrix[2, 3] = -10.0  # Z軸方向に移動
+    T_offset = Transform.from_matrix(offset_matrix)
 
-    # ゴール変換行列から位置とクォータニオンを抽出
+    # 4. ゴールとなる変換行列を計算
+    # 計算順序: Auroraから見たUpper * Upperから見た初期Lower * Lower自身のオフセット
+    # これにより「頭蓋骨が動いても、顎の向きを基準に3mm前方」が維持されます
+    T_lower_from_aurora_transform_goal = T_upper_from_aurora_transform @ T_lower_from_upper_transform @ T_offset
+
+    # 5. ゴール変換行列から位置とクォータニオンを抽出
     t_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.t
     R_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.R
     quat_lower_from_aurora_goal = R.from_matrix(R_lower_from_aurora_goal).as_quat()
 
-    # main.pyの関数を使用して、ロボットアームの目標姿勢を計算
+    # 6. 外部関数(main.py)を使用して、ロボット座標系(Robot)から見たアーム(Arm)の姿勢に変換
     T_arm_from_robot = run_pose_transoformation(
         goal_aurora_point=t_lower_from_aurora_goal,
         goal_aurora_quaternion=quat_lower_from_aurora_goal,
-        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202511040132.csv",
-        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_202511040132.csv"
+        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_2026010815.csv",
+        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_2026010815.csv"
     )
 
+    # 7. ロボット制御用に位置(t)と回転ベクトル(axis-angle)を抽出
     T_arm_from_robot_transform = Transform.from_matrix(T_arm_from_robot)
     t_arm_from_robot = T_arm_from_robot_transform.t
     R_arm_from_robot = T_arm_from_robot_transform.R
@@ -82,37 +164,27 @@ def move_robot_to_goal(arm, aurora, T_lower_from_upper):
 
     print(f"ゴール位置 (Robot座標): {t_arm_from_robot}")
 
-    # # ロボットアームを段階的に移動
-    # print("ロボットアームをy,z方向に移動中...")
-    # arm.set_position(y=t_arm_from_robot[1], z=t_arm_from_robot[2], wait=True, speed=50)
-
-    # print("1秒後にx軸方向の移動を開始します...")
-    # time.sleep(1)
-    
-    # print("ロボットアームをx方向に移動中...")
-    # arm.set_position(x=t_arm_from_robot[0], wait=True, speed=50)
-
-    angle_pose = [t_arm_from_robot[0], t_arm_from_robot[1], t_arm_from_robot[2], arm_rotvec_from_robot[0], arm_rotvec_from_robot[1], arm_rotvec_from_robot[2]]
+    # 8. ロボットアームへ移動指令
+    angle_pose = [
+        t_arm_from_robot[0], t_arm_from_robot[1], t_arm_from_robot[2], 
+        arm_rotvec_from_robot[0], arm_rotvec_from_robot[1], arm_rotvec_from_robot[2]
+    ]
     print("ロボットアームの姿勢を調整中...")
     arm.set_position_aa(axis_angle_pose=angle_pose, wait=True, speed=20)
 
     print("ロボットアームの移動が完了しました。")
 
+    # 9. 精度確認のための差分計算
     print("目標とした位置・姿勢と現在の位置・姿勢の差分を計算中...")
-    # 目標としたT_lower_from_auroraを取得
-    T_lower_from_aurora_goal = T_lower_from_aurora_transform_goal.matrix
-
-    # 現在（移動後）のT_lower_from_auroraを取得
+    T_lower_from_aurora_goal_mat = T_lower_from_aurora_transform_goal.matrix
     probes_after = generateProbe(aurora.get_frame())
     lower_probe_after = probes_after[0]
     t_lower_from_aurora_after = np.array([lower_probe_after.pos.x, lower_probe_after.pos.y, lower_probe_after.pos.z])
     quat_lower_from_aurora_after = np.array([lower_probe_after.quat.x, lower_probe_after.quat.y, lower_probe_after.quat.z, lower_probe_after.quat.w])
     R_lower_from_aurora_after = R.from_quat(quat_lower_from_aurora_after).as_matrix()
-    T_lower_from_aurora_after = Transform(R_lower_from_aurora_after, t_lower_from_aurora_after).matrix
+    T_lower_from_aurora_after_mat = Transform(R_lower_from_aurora_after, t_lower_from_aurora_after).matrix
 
-    # 差分を計算
-    compute_transform_difference(T_lower_from_aurora_goal, T_lower_from_aurora_after)
-
+    compute_transform_difference(T_lower_from_aurora_goal_mat, T_lower_from_aurora_after_mat)
 
 def main():
     # ポート設定

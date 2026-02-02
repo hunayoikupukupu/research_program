@@ -181,9 +181,9 @@ def main(x_range, y_range, z_range, N, output_file):
 if __name__ == "__main__":
     # ここで全てのパラメータを一か所で設定（ここだけを変更すれば良い）
     main(
-        x_range=(100, 250),                    # X座標の範囲 (開始値, 終了値)
+        x_range=(60, 210),                    # X座標の範囲 (開始値, 終了値)
         y_range=(-75, 75),                     # Y座標の範囲 (開始値, 終了値)
         z_range=(-175, -325),                     # Z座標の範囲 (開始値, 終了値)
-        N=2,                                   # サンプル数（各辺N+1ポイント）
-        output_file="robot&aurora/current_code/calibration_data/aurora_robot_pose_log_20251105.csv",
+        N=5,                                   # サンプル数（各辺N+1ポイント）
+        output_file="robot&aurora/current_code/calibration_data/aurora_robot_pose_log_2026010815.csv",
     )

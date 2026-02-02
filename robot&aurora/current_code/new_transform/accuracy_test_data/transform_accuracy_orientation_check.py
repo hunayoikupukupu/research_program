@@ -5,14 +5,14 @@ from scipy.spatial.transform import Rotation
 import os
 import sys
 
-# --- 1. データの読み込みと前処理 (★修正: データ数を表示) ---
+# --- 1. データの読み込みと前処理 (★修正: グループ別サマリー表示) ---
 
 def load_and_group_data(filepath, bin_width=3, bin_start=None):
     """
     CSVを読み込み、angle_diffを計算し、指定された範囲(bin_width)と
     開始位置(bin_start)でグループ化された平均値と、
     全体の統計情報（平均、最大、最小）の両方を返します。
-    (★各グループのデータ数をコンソールに表示する機能を追加)
+    (★各グループのデータ数と平均値をコンソールに表示する機能を追加)
 
     Args:
         filepath (str): CSVファイルへのパス
@@ -23,7 +23,7 @@ def load_and_group_data(filepath, bin_width=3, bin_start=None):
 
     Returns:
         tuple: (df_grouped, overall_stats)
-               df_grouped: グループ化・ソートされたDataFrame
+               df_grouped: グループ化・ソートされたDataFrame (平均値のみ)
                overall_stats: 全体の統計情報を含む辞書
                または (None, None) (エラー時)
     """
@@ -129,26 +129,46 @@ def load_and_group_data(filepath, bin_width=3, bin_start=None):
         print(f"Error during binning (pd.cut): {e}")
         return None, None
 
-    # --- ▼ (★修正箇所) 各グループのデータ数を計算して表示 ▼ ---
-    print("\n--- Data Counts per Group ---")
-    # `dropna=False` で NaN (ビン外) の数も表示
-    # `sort_index()` でビンの昇順に並び替え
-    group_counts = df['angle_diff_group'].value_counts(dropna=False).sort_index()
-    print(group_counts)
-    print("-------------------------------\n")
-    # --- ▲ (修正箇所 完了) ▲ ---
 
-
-    # 7. グループ化して平均を計算
-    print("Calculating mean for each group...")
+    # 7. グループ化して平均とデータ数を計算
+    print("Calculating mean and count for each group...")
     cols_to_average = [
         'delta_t_robot_norm', 'delta_R_robot_angle',
         'delta_t_aurora_norm', 'delta_R_aurora_angle'
     ]
     
+    # 7a. 平均値の計算
     df_grouped = df.groupby('angle_diff_group')[cols_to_average].mean()
 
-    # 8. 【ソート】
+    # 7b. データ数の計算 (ビニングされたもののみ)
+    group_counts_series = df.groupby('angle_diff_group').size()
+    group_counts_series.name = 'Data_Count'
+    
+    # 7c. (参考) ビン外(NaN)のデータ数
+    nan_count = df['angle_diff_group'].isna().sum()
+
+    # 7d. 平均値とデータ数を結合
+    df_summary = df_grouped.join(group_counts_series)
+
+
+    # --- ▼ (★修正箇所) 結合したサマリーを表示 ▼ ---
+    print("\n--- Summary per Group (Mean Values & Data Counts) ---")
+    
+    # Pandasの表示オプションを設定して、小数点以下4桁で揃える
+    with pd.option_context('display.float_format', '{:.4f}'.format, 'display.max_rows', None):
+        if df_summary.empty:
+            print("No data within the specified bins.")
+        else:
+            print(df_summary)
+            
+    if nan_count > 0:
+        print(f"\nNote: {nan_count} data points were outside the bins (NaN) and excluded from this summary.")
+    
+    print("------------------------------------------------------\n")
+    # --- ▲ (修正箇所 完了) ▲ ---
+
+
+    # 8. 【ソート】(グラフ描画用にインデックスでソート)
     df_grouped = df_grouped.sort_index(ascending=True)
     
     # 9. (追加) プロットしやすいようにインデックスを文字列に変換
@@ -240,7 +260,7 @@ def plot_delta_graphs(df_grouped, overall_stats, source='robot'):
 
     # 全体平均の水平線
     ax1.axhline(y=mean_t, color='red', linestyle='--', linewidth=2, 
-                  label=f'Overall Mean: {mean_t:.3f}', zorder=4)
+                 label=f'Overall Mean: {mean_t:.3f}', zorder=4)
     
     # 最大値と最小値のテキスト
     stats_text_t = f"Max: {max_t:.3f}\nMin: {min_t:.3f}"
@@ -266,7 +286,7 @@ def plot_delta_graphs(df_grouped, overall_stats, source='robot'):
 
     # 全体平均の水平線
     ax2.axhline(y=mean_R, color='red', linestyle='--', linewidth=2, 
-                  label=f'Overall Mean: {mean_R:.3f}', zorder=4)
+                 label=f'Overall Mean: {mean_R:.3f}', zorder=4)
 
     # 最大値と最小値のテキスト
     stats_text_R = f"Max: {max_R:.3f}\nMin: {min_R:.3f}"
