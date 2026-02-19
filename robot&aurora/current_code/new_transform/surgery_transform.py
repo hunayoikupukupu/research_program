@@ -135,7 +135,7 @@ def move_robot_to_goal(arm, aurora, T_lower_from_upper):
     # 3. オフセット行列の作成 (LowerセンサーのローカルZ軸に対して3.0mm)
     # 4x4の単位行列の [2, 3] 要素に移動量を設定します
     offset_matrix = np.eye(4)
-    offset_matrix[2, 3] = -10.0  # Z軸方向に移動
+    offset_matrix[2, 3] = -20.0  # Z軸方向に移動
     T_offset = Transform.from_matrix(offset_matrix)
 
     # 4. ゴールとなる変換行列を計算
@@ -152,8 +152,8 @@ def move_robot_to_goal(arm, aurora, T_lower_from_upper):
     T_arm_from_robot = run_pose_transoformation(
         goal_aurora_point=t_lower_from_aurora_goal,
         goal_aurora_quaternion=quat_lower_from_aurora_goal,
-        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_2026010815.csv",
-        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_2026010815.csv"
+        world_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_pose_log_20260205.csv",
+        hand_eye_calib_csv="robot&aurora/current_code/new_transform/data/aurora_robot_orientation_log_20260205.csv"
     )
 
     # 7. ロボット制御用に位置(t)と回転ベクトル(axis-angle)を抽出

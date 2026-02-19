@@ -176,7 +176,7 @@ if __name__ == "__main__":
     # --- ★★★ ここで全てのパラメータを一か所で設定 ★★★ ---
     main(
         # --- 変更点: パラメータ設定 ---
-        fixed_pos={'x': 150, 'y': 0, 'z': -200}, # ロボットアームを固定するXYZ座標
+        fixed_pos={'x': 155, 'y': 0, 'z': -250}, # ロボットアームを固定するXYZ座標
         
         roll_range=(-30, 30),                     # Rollの範囲 (開始角度, 終了角度)
         pitch_range=(-30, 30),                    # Pitchの範囲 (開始角度, 終了角度)
@@ -186,5 +186,5 @@ if __name__ == "__main__":
         
         N=2,                                      # 各範囲のサンプル数（各範囲でN+1ポイント取得）
         
-        output_file="robot&aurora/current_code/new_transform/data/aurora_robot_orientation_log_2020510281902.csv"
+        output_file="robot&aurora/current_code/new_transform/data/aurora_robot_orientation_log_20260205.csv"
     )
